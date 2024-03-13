@@ -5,14 +5,14 @@ function prep_data_params_dict!(DataSet, dim_redux_size;
     DATA = DataSet["dataset"]
     CDS_data = DATA.data[:,DataSet["CDS"]]
     clinical_factors = DataSet["CF"]
-    X_data =  CDS_data[:,sample(collect(1:size(CDS_data)[2]), dim_redux_size, replace=false)]
     if dim_redux_type == "CLINF"
         X_data = DataSet["CF"]
-    end 
-    if dim_redux_type == "STD"
+    elseif dim_redux_type == "STD"
         VARS = var(CDS_data, dims = 1)
         genes = reverse(sortperm(vec(VARS)))[1:dim_redux_size]
         X_data = CDS_data[:,genes] 
+    else ## dim redux type is RDM 
+        X_data =  CDS_data[:,sample(collect(1:size(CDS_data)[2]), dim_redux_size, replace=false)]    
     end 
     nb_clinf = size(clinical_factors)[2]
     # init params dict
@@ -90,7 +90,7 @@ function dump_results!(DS, LOSSES_BY_FOLD, OUTS_TST, Y_T_TST, Y_E_TST, train_cin
     return c_indices
 end 
 
-function evaluate_coxridge_rdm(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cph_nb_hl = 0, cph_lr = 1e-4, 
+function evaluate_coxridge(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cph_nb_hl = 0, cph_lr = 1e-4, 
         cph_wd = 1e-4, nfolds =5, modeltype = "coxridge",dim_redux_type ="RDM", print_step = 500)
     folds = prep_data_params_dict!(DS, dim_redux_size, hlsize = hlsize, nepochs= nepochs, 
         cph_nb_hl = cph_nb_hl, cph_lr = cph_lr, cph_wd = cph_wd, nfolds = nfolds,  modeltype = modeltype,
@@ -129,7 +129,7 @@ function evaluate_coxridge_rdm(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cp
     return c_indices_tst
 end 
 
-function evaluate_cphdnn_rdm(DS, dim_redux_size;hlsize = 512, nepochs= 5_000, cph_nb_hl = 2, cph_lr = 1e-6, 
+function evaluate_cphdnn(DS, dim_redux_size;hlsize = 512, nepochs= 5_000, cph_nb_hl = 2, cph_lr = 1e-6, 
     cph_wd = 1e-4, nfolds=5, modeltype = "cphdnn",dim_redux_type ="RDM", print_step = 500)
     folds = prep_data_params_dict!(DS, dim_redux_size, hlsize = hlsize, nepochs= nepochs, 
         cph_nb_hl = cph_nb_hl, cph_lr = cph_lr, cph_wd = cph_wd,  modeltype = modeltype,

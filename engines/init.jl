@@ -6,7 +6,6 @@ Pkg.activate(".")
 using CSV
 using DataFrames
 using JSON
-using ProgressBars
 using HDF5
 using Statistics
 using Flux 
@@ -23,7 +22,7 @@ using MultivariateStats
 using XLSX
 using UMAP 
 
-using JuBox 
+# using JuBox 
 function set_dirs(basedir="./RES")
     session_id = "$(now())"
     outpath = "$basedir/$session_id"
