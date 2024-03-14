@@ -3,9 +3,10 @@ function SMA(DATA_X, DATA_Y; n=10, k=10)
     means_x = []
     Y_infos =  DATA_Y[sortperm(DATA_X)]
     X_infos = sort(DATA_X)
-    for X_id in vcat(collect(1:Int(floor(length(X_infos) / n )):length(X_infos)), length(X_infos))
+    step = Int(floor(length(X_infos) / n ))
+    for X_id in vcat(collect(1:step:length(X_infos) - step), length(X_infos))
         x_id_min = max(X_id - k, 1)
-        x_id_max = min(X_id + k, length(DATA_X))
+        x_id_max = min(X_id + k, length(X_infos))
         sma = mean(Y_infos[x_id_min:x_id_max])
         push!(means_y, sma)
         push!(means_x, X_infos[X_id])
@@ -16,7 +17,7 @@ end
 
 function draw_scatter_sma!(ax, X, Y, col,label,alpha,ls, SMA_K, SMA_N)
     scatter!(ax, log10.(X), Y, color= col, alpha = alpha)
-    sma_x, sma_y = SMA(log10.(X), Y, k=SMA_K,n=SMA_N)
+    sma_x, sma_y = SMA(log10.(X), Y, n=SMA_N, k=SMA_K)
     lines!(ax, sma_x,sma_y, color = col, label = label, linewidth=3, linestyle =ls)
     text!(ax, sma_x .- 0.25,sma_y,text = string.(round.(sma_y, digits=2)), color= col)
 

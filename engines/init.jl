@@ -21,6 +21,7 @@ using TSne
 using MultivariateStats
 using XLSX
 using UMAP 
+using LinearAlgebra
 
 # using JuBox 
 function set_dirs(basedir="./RES")

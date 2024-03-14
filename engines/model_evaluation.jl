@@ -1,3 +1,21 @@
+function fit_transform_pca(X, outdim)
+    x_means =  mean(X, dims =2 )
+    Z = X .- x_means
+    U, S, V = svd(Z,full=true);
+    Matrix(U[:, sortperm(S, rev=true)[1:outdim]]') * Z
+end
+function fit_pca(X, outdim)
+    x_means =  mean(X, dims =2 )
+    Z = X .- x_means
+    U, S, V = svd(Z,full=true);
+    return Matrix(U[:, sortperm(S, rev=true)[1:outdim]]') 
+end
+function transform_pca(X, P)
+    x_means =  mean(X, dims =2 )
+    Z = X .- x_means
+    P * Z
+end 
+
 function prep_data_params_dict!(DataSet, dim_redux_size;
     hlsize = 0, nepochs= 5_000, cph_nb_hl = 2, cph_lr = 1e-4, cph_wd = 1e-4,  
     nfolds = 5, modeltype = "coxridge",dim_redux_type ="RDM")
@@ -11,6 +29,8 @@ function prep_data_params_dict!(DataSet, dim_redux_size;
         VARS = var(CDS_data, dims = 1)
         genes = reverse(sortperm(vec(VARS)))[1:dim_redux_size]
         X_data = CDS_data[:,genes] 
+    elseif dim_redux_type == "PCA"
+        X_data = CDS_data
     else ## dim redux type is RDM 
         X_data =  CDS_data[:,sample(collect(1:size(CDS_data)[2]), dim_redux_size, replace=false)]    
     end 
@@ -187,9 +207,10 @@ function evaluate_coxridge_pca(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cp
         DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
         "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
         # fit PCA 
-        M = fit(PCA, Matrix(cpu(train_x)),maxoutdim=dim_redux_size);
-        train_x = gpu(Matrix(hcat(predict(M, cpu(train_x))', DS["CF"][fold["train_ids"],:])'))
-        test_x = gpu(Matrix(hcat(predict(M, cpu(test_x))', DS["CF"][fold["test_ids"],:])'))
+        # fit PCA 
+        P = fit_pca(cpu(train_x), dim_redux_size);
+        train_x = gpu(Matrix(hcat(transform_pca(cpu(train_x), P)', DS["CF"][fold["train_ids"],:])'))
+        test_x = gpu(Matrix(hcat(transform_pca(cpu(test_x), P)', DS["CF"][fold["test_ids"],:])'))
         DS["params"]["insize"] = size(train_x)[1] + DS["params"]["nb_clinf"]
         DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
         "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
@@ -246,9 +267,9 @@ function evaluate_cphdnn_pca(DS, dim_redux_size;hlsize = 512, nepochs= 5_000, cp
     DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
     "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
     # fit PCA 
-    M = fit(PCA, Matrix(cpu(train_x)),maxoutdim=dim_redux_size);
-    train_x = gpu(Matrix(hcat(predict(M, cpu(train_x))', DS["CF"][fold["train_ids"],:])'))
-    test_x = gpu(Matrix(hcat(predict(M, cpu(test_x))', DS["CF"][fold["test_ids"],:])'))
+    P = fit_pca(cpu(train_x), dim_redux_size);
+    train_x = gpu(Matrix(hcat(transform_pca(cpu(train_x), P)', DS["CF"][fold["train_ids"],:])'))
+    test_x = gpu(Matrix(hcat(transform_pca(cpu(test_x), P)', DS["CF"][fold["test_ids"],:])'))
     DS["params"]["insize"] = size(train_x)[1] + DS["params"]["nb_clinf"]
     DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
     "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
