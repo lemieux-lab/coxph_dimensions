@@ -46,6 +46,9 @@ for (dname, coords) in zip(unique(RES[:,"dataset"]), [(1,1),(1,2),(2,1),(2,2)])
                     
     coords === (1,1) ? axislegend(ax, framewidth =0, position = :lt, labelsize = 10, patchlabelgap = 1, padding = (0,0,0,0)) : 1   
 end 
+CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.pdf", fig)
+CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.png", fig)
+CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.svg", fig)
 
 fig
 
