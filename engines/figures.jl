@@ -15,11 +15,11 @@ function SMA(DATA_X, DATA_Y; n=10, k=10)
 end 
 
 
-function draw_scatter_sma!(ax, X, Y, col,label,alpha,ls, SMA_K, SMA_N)
+function draw_scatter_sma!(ax, X, Y, col,label,alpha,ls, SMA_K, SMA_N;text_on=true)
     scatter!(ax, log10.(X), Y, color= col, alpha = alpha)
     sma_x, sma_y = SMA(log10.(X), Y, n=SMA_N, k=SMA_K)
     lines!(ax, sma_x,sma_y, color = col, label = label, linewidth=3, linestyle =ls)
-    text!(ax, sma_x .- 0.25,sma_y,text = string.(round.(sma_y, digits=2)), color= col)
+    text_on ? text!(ax, sma_x .- 0.25,sma_y,text = string.(round.(sma_y, digits=2)), color= col) : 0
 
 end 
 

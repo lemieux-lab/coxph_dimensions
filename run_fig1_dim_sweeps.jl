@@ -51,10 +51,10 @@ LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0)
 ### 10 replicates
 nepochs, nfolds = 5000, 5
 DS_list = shuffle([BRCA_data, LGNAML_data, LGG_data, OV_data])
-DataSet = LGG_data
-train_size = size(DataSet["dataset"].data)[1] - Int(round(size(DataSet["dataset"].data)[1]    / nfolds))
-evaluate_cphdnn_pca(LGG_data, train_size, nepochs=nepochs, cph_wd= 1e-2);
-evaluate_coxridge_pca(LGG_data, train_size, nepochs=nepochs, cph_lr = 1e-4);
+# DataSet = LGG_data
+# train_size = size(DataSet["dataset"].data)[1] - Int(round(size(DataSet["dataset"].data)[1]    / nfolds))
+# evaluate_cphdnn_pca(LGG_data, train_size, nepochs=nepochs, cph_wd= 1e-2);
+# evaluate_coxridge_pca(LGG_data, train_size, nepochs=nepochs, cph_lr = 1e-4);
     
 for DataSet in DS_list
 
