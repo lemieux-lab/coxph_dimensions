@@ -50,7 +50,7 @@ LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0)
 ### Use CPHDNN, Cox-ridge 
 ### 10 replicates
 nepochs, nfolds = 5000, 5
-DS_list = shuffle([BRCA_data, LGNAML_data, LGG_data, OV_data])
+DS_list = shuffle([BRCA_data, LGNAML_data, LGG_data, OV_data]);
 # DataSet = LGG_data
 # train_size = size(DataSet["dataset"].data)[1] - Int(round(size(DataSet["dataset"].data)[1]    / nfolds))
 # evaluate_cphdnn_pca(LGG_data, train_size, nepochs=nepochs, cph_wd= 1e-2);
@@ -62,7 +62,8 @@ for DataSet in DS_list
 
     ### EVAL WITH PCA 
     train_size = size(DataSet["dataset"].data)[1] - Int(round(size(DataSet["dataset"].data)[1]    / nfolds))
-    dim_redux_list = shuffle(vcat(collect(20:20:train_size-20), train_size))
+    #dim_redux_list = shuffle(vcat(collect(20:20:train_size-20), train_size))
+    dim_redux_list = shuffle(collect(1:19))
     for dim_redux_size in dim_redux_list
         evaluate_cphdnn_pca(DataSet, dim_redux_size, nepochs=nepochs, cph_wd= 1e-2);
         evaluate_coxridge_pca(DataSet, dim_redux_size, nepochs=nepochs, cph_lr = 1e-4);
