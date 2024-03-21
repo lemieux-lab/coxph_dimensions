@@ -12,7 +12,7 @@ for (dname, coords) in zip(unique(RES[:,"dataset"]), [(1,1),(1,2),(2,1),(2,2)])
     ds_size = unique(data_df[:,"nsamples"])[1]
     ticks = [1,10,100,1000,maximum(data_df[:,"insize"])]
     row, col = coords
-    SMA_K, SMA_N = 5,10 
+    SMA_K, SMA_N = 10,10 
     #yticks = (collect(1:100)/100, [x * 100 % 2 == 0 ? "$x" : "" for x in collect(1:100)/100])
     #dname == "LGG" ? yticks =  (collect(1:50)/50, [x * 100 % 4 == 0 ? "$x" : "" for x in collect(1:50)/50]) : yticks
     ax = Axis(fig[row,col],
@@ -54,7 +54,7 @@ fig
 
 SMA_K, SMA_N = 5,10
 fig = Figure();
-dname = "BRCA"
+dname = "LGG"
 data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "PCA" ,:]
 ds_size = unique(data_df[:,"nsamples"])[1]
 ticks = [1,10,100,1000,maximum(data_df[:,"insize"])]

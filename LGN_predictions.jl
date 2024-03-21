@@ -4,7 +4,31 @@ include("engines/deep_learning.jl")
 include("engines/cross_validation.jl")
 include("engines/model_evaluation.jl")
 
+# prediction scores (Accuracy %) for targets in Leucegene 
+data_df = CSV.read("figures/LGN_predictions_logistic_regression_sparse_cg.csv", DataFrame)
+fig = Figure(size = (512, 512));
+ax = Axis(fig[1,1], 
+    title = "Prediction accuracy of clinical features in Leucegene data (n=300)\nwith Logistic Regression (python scikit-klearn)",
+    yticks = (collect(1:20) / 20 * 100, string.(collect(1:20) / 20 * 100)), 
+    xticks = (collect(1:size(data_df)[2]), names(data_df)),
+    xticklabelrotation = 0.5,  
+    xlabel = "Clinical Feature Prediction Target",
+    ylabel = "Accuracy (%)"
+);
+for (ind, target) in enumerate(names(data_df))
+    boxplot!(ax, ones(size(data_df)[1]) * ind, data_df[:,target] *100)
+    text!(ax, ind - 0.4, median(data_df[:,target] ) * 100, text = string(round(median(data_df[:,target] ) * 100, digits = 2) ))
+end
+CairoMakie.save("figures/LGN_predictions_logistic_regression_sparse_cg.pdf",fig)
+CairoMakie.save("figures/LGN_predictions_logistic_regression_sparse_cg.png",fig)
+CairoMakie.save("figures/LGN_predictions_logistic_regression_sparse_cg.svg",fig)
+
 lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
+tcga_datasets_list = ["Data/TCGA_datasets/$(x)" for x in readdir("Data/TCGA_OV_BRCA_LGG/") ]
+TCGA_datasets = load_tcga_datasets(tcga_datasets_list);
+BRCA_data = TCGA_datasets["BRCA"]
+LGG_data = TCGA_datasets["LGG"]
+OV_data = TCGA_datasets["OV"]
 
 LGNAML_data = Dict("name"=>"LgnAML","dataset" => MLSurvDataset("Data/LEUCEGENE/LGN_AML_tpm_n300_btypes_labels_surv.h5")) 
 keep_tcga_cds = [occursin("protein_coding", bt) for bt in BRCA_data["dataset"].biotypes]
@@ -28,8 +52,8 @@ wd = 1e-2
 modeltype = "dnn"
 nfolds=5
 
-targets = Array{Float32}(lgn_CF[:,"Tissue"] .== "Blood")
-# targets = Array{Int}(lgn_CF[:,"NPM1 mutation"])
+# targets = Array{Float32}(lgn_CF[:,"Tissue"] .== "Blood")
+targets = Array{Int}(lgn_CF[:,"NPM1 mutation"])
 
 folds = split_train_test(LGNAML_data["dataset"].data[:,keep_lgnaml_common], targets;nfolds = nfolds)
 print_step = 100
