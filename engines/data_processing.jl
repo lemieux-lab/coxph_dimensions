@@ -304,13 +304,13 @@ function process_brca(outfilename = "Data/TCGA_BRCA_tpm_n1050_btypes_labels.h5")
         end 
     end 
     CLIN_df = DataFrame(:case_id=>case_ids, :submitid=>submitids,:survt=>Array{Int}(survts),:surve=>Array{Int}(surves))
-    
     subtypes = CSV.read("Data/GDC_raw/TCGA_BRCA_survival_pam50.csv", DataFrame)
     DF = DataFrame(:USI=> [tag[1:end-4] for tag in subtypes[:,"samples"]],:subtype => subtypes[:,"clinical_data_PAM50MRNA"])
     # join DF to USI_rnaseq_filename
     samples_df = DataFrame(:case_id=>samples, :II=>collect(1:length(samples)))
-
+    
     samples_df = sort(innerjoin(samples_df, CLIN_df, on = :case_id), :II)
+    CSV.write("Data/GDC_raw/TCGA_BRCA_case_ids_submitids.csv", samples_df)
 
     FULL_CLIN_DF = innerjoin(DF, samples_df, on = :USI)
     outfile = h5open(outfilename, "w")
