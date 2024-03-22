@@ -6,6 +6,7 @@ include("engines/model_evaluation.jl")
 include("engines/figures.jl")
 RES = gather_params("RES_FIG1");
 RES = RES[isnan.(RES[:,"cph_test_c_ind"]).== 0,:]
+RES[RES[:,"model_type"] .== "coxridge", ["cph_lr", "cph_wd", "cph_hl_size", "cph_nb_hl"]]
 fig = Figure(size=(700,700));
 for (dname, coords) in zip(unique(RES[:,"dataset"]), [(1,1),(1,2),(2,1),(2,2)])
     data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "STD" ,:]
