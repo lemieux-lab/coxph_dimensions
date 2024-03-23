@@ -20,8 +20,8 @@ function make_boxplots(PARAMS)
                 limits = (0.5,size(unique(DATA_df[:,"TYPE"]))[1] + 0.5, nothing, up_y),
                 xlabel = "Dimensionality reduction",
                 ylabel = "Concordance index",
-                xticks =  (collect(1:size(unique(DATA_df[:,"TYPE"]))[1]), unique(DATA_df[:,"TYPE"])))
-    lines!(ax1,[0,5],[0.5,0.5], linestyle = :dot)
+                xticks =  (collect(1:size(unique(DATA_df[:,"TYPE"]))[1]), replace.(unique(DATA_df[:,"TYPE"]), "-"=>"\n")))
+    lines!(ax1,[0,size(unique(DATA_df[:,"TYPE"]))[1]],[0.5,0.5], linestyle = :dot)
     boxplot!(ax1, DATA_df.ID[DATA_df[:,"model_type"].=="cphdnn"] .- 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="cphdnn", "cph_test_c_ind"], color = "blue", label = "CPHDNN")
     boxplot!(ax1, DATA_df.ID[DATA_df[:,"model_type"].=="coxridge"] .+ 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="coxridge", "cph_test_c_ind"], color = "orange", label = "Cox-ridge")
     medians = combine(groupby(DATA_df[:,["ID", "model_type", "cph_test_c_ind"]], ["ID", "model_type"]), :cph_test_c_ind=>median) 

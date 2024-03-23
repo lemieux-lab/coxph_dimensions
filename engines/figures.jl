@@ -1,3 +1,47 @@
+function make_boxplots(PARAMS;test_metric = "cph_test_c_ind")
+    fig = Figure(size=(600,512));
+    offshift = 0.03
+    up_y = 0.80
+    DATA_df = PARAMS[PARAMS[:,"dataset"] .== "LgnAML",:]
+    DATA_df = innerjoin(DATA_df,DataFrame("TYPE"=>unique(DATA_df[:,"TYPE"]), "ID" => collect(1:size(unique(DATA_df[:,"TYPE"]))[1])), on =:TYPE)
+    #dtype_insize = combine(groupby(DATA_df, ["TYPE"]), :insize=>maximum)
+    #ticks = ["$dtype\n($ins_max)" for (dtype,ins_max) in zip(dtype_insize[:,1], dtype_insize[:,2])]
+    ax1 = Axis(fig[1,1];
+                title = "Leucegene",
+                limits = (0.5,size(unique(DATA_df[:,"TYPE"]))[1] + 0.5, nothing, up_y),
+                xlabel = "Dimensionality reduction",
+                ylabel = "Concordance index",
+                xticks =  (collect(1:size(unique(DATA_df[:,"TYPE"]))[1]), replace.(unique(DATA_df[:,"TYPE"]), "-"=>"\n")))
+    lines!(ax1,[0,size(unique(DATA_df[:,"TYPE"]))[1]],[0.5,0.5], linestyle = :dot)
+    boxplot!(ax1, DATA_df.ID[DATA_df[:,"model_type"].=="cphdnn"] .- 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="cphdnn", test_metric], color = "blue", label = "CPHDNN")
+    boxplot!(ax1, DATA_df.ID[DATA_df[:,"model_type"].=="coxridge"] .+ 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="coxridge", test_metric], color = "orange", label = "Cox-ridge")
+    medians = combine(groupby(DATA_df[:,["ID", "model_type", test_metric]], ["ID", "model_type"]), :cph_test_c_ind=>median) 
+    text!(ax1, medians.ID[medians.model_type .== "cphdnn"].-0.35, medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median, digits = 3)))
+    text!(ax1, medians.ID[medians.model_type .== "coxridge"] .+ 0.04, medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median, digits = 3)))
+    axislegend(ax1, position = :rb)
+    fig
+    DATA_df = PARAMS[PARAMS[:,"dataset"] .== "BRCA",:]
+    DATA_df = innerjoin(DATA_df,DataFrame("TYPE"=>unique(DATA_df[:,"TYPE"]), "ID" => collect(1:size(unique(DATA_df[:,"TYPE"]))[1])), on =:TYPE)
+    # dtype_insize = combine(groupby(DATA_df, ["dim_redux_type"]), :insize=>maximum)
+    # ticks = ["$dtype\n($ins_max)" for (dtype,ins_max) in zip(dtype_insize[:,1], dtype_insize[:,2])]
+    ax2 = Axis(fig[2,1];
+                title = "BRCA",
+                limits = (0.5,size(unique(DATA_df[:,"TYPE"]))[1] + 0.5, nothing,up_y),
+                xlabel = "Dimensionality reduction",
+                ylabel = "Concordance index",
+                xticks = (collect(1:size(unique(DATA_df[:,"TYPE"]))[1]), unique(DATA_df[:,"TYPE"])))
+    lines!(ax2,[0,5],[0.5,0.5], linestyle = :dot)
+    boxplot!(ax2, DATA_df.ID[DATA_df[:,"model_type"].=="cphdnn"] .- 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="cphdnn", test_metric], color = "blue", label = "CPHDNN")
+    boxplot!(ax2, DATA_df.ID[DATA_df[:,"model_type"].=="coxridge"] .+ 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="coxridge", test_metric], color = "orange", label = "Cox-Ridge")
+    medians = combine(groupby(DATA_df[:,["ID", "model_type", test_metric]], ["ID", "model_type"]), :cph_test_c_ind=>median) 
+    text!(ax2, medians.ID[medians.model_type .== "cphdnn"].-0.35, medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median, digits = 3)))
+    text!(ax2, medians.ID[medians.model_type .== "coxridge"] .+ 0.04, medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median, digits = 3)))
+    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.svg",fig)
+    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.png",fig)
+    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.pdf",fig)
+    return fig
+end
+
 function SMA(DATA_X, DATA_Y; n=10, k=10)
     means_y = []
     means_x = []
