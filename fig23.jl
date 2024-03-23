@@ -5,52 +5,12 @@ include("engines/deep_learning.jl")
 include("engines/cross_validation.jl")
 include("engines/model_evaluation.jl")
 PARAMS = gather_params("RES_FIG23/")
-PARAMS[:,"TYPE"] = ["$x-$y" for (x,y) in  zip(PARAMS[:, "dim_redux_type"], PARAMS[:, "insize"])]
+PARAMS[:,"TYPE"] = replace.(["$x-$y" for (x,y) in  zip(PARAMS[:, "dim_redux_type"], PARAMS[:, "insize"])], "RDM"=>"CDS")
+
+names(PARAMS)
 PARAMS[PARAMS[:,"dataset"] .== "LgnAML",["TYPE"]]
-function make_boxplots(PARAMS)
-    fig = Figure(size=(600,512));
-    offshift = 0.05
-    up_y = 0.80
-    DATA_df = PARAMS[PARAMS[:,"dataset"] .== "LgnAML",:]
-    DATA_df = innerjoin(DATA_df,DataFrame("TYPE"=>unique(DATA_df[:,"TYPE"]), "ID" => collect(1:size(unique(DATA_df[:,"TYPE"]))[1])), on =:TYPE)
-    #dtype_insize = combine(groupby(DATA_df, ["TYPE"]), :insize=>maximum)
-    #ticks = ["$dtype\n($ins_max)" for (dtype,ins_max) in zip(dtype_insize[:,1], dtype_insize[:,2])]
-    ax1 = Axis(fig[1,1];
-                title = "Leucegene",
-                limits = (0.5,size(unique(DATA_df[:,"TYPE"]))[1] + 0.5, nothing, up_y),
-                xlabel = "Dimensionality reduction",
-                ylabel = "Concordance index",
-                xticks =  (collect(1:size(unique(DATA_df[:,"TYPE"]))[1]), replace.(unique(DATA_df[:,"TYPE"]), "-"=>"\n")))
-    lines!(ax1,[0,size(unique(DATA_df[:,"TYPE"]))[1]],[0.5,0.5], linestyle = :dot)
-    boxplot!(ax1, DATA_df.ID[DATA_df[:,"model_type"].=="cphdnn"] .- 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="cphdnn", "cph_test_c_ind"], color = "blue", label = "CPHDNN")
-    boxplot!(ax1, DATA_df.ID[DATA_df[:,"model_type"].=="coxridge"] .+ 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="coxridge", "cph_test_c_ind"], color = "orange", label = "Cox-ridge")
-    medians = combine(groupby(DATA_df[:,["ID", "model_type", "cph_test_c_ind"]], ["ID", "model_type"]), :cph_test_c_ind=>median) 
-    text!(ax1, medians.ID[medians.model_type .== "cphdnn"].-0.35, medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median, digits = 3)))
-    text!(ax1, medians.ID[medians.model_type .== "coxridge"] .+ 0.04, medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median, digits = 3)))
-    axislegend(ax1, position = :rb)
-    fig
-    DATA_df = PARAMS[PARAMS[:,"dataset"] .== "BRCA",:]
-    DATA_df = innerjoin(DATA_df,DataFrame("TYPE"=>unique(DATA_df[:,"TYPE"]), "ID" => collect(1:size(unique(DATA_df[:,"TYPE"]))[1])), on =:TYPE)
-    # dtype_insize = combine(groupby(DATA_df, ["dim_redux_type"]), :insize=>maximum)
-    # ticks = ["$dtype\n($ins_max)" for (dtype,ins_max) in zip(dtype_insize[:,1], dtype_insize[:,2])]
-    ax2 = Axis(fig[2,1];
-                title = "BRCA",
-                limits = (0.5,size(unique(DATA_df[:,"TYPE"]))[1] + 0.5, nothing,up_y),
-                xlabel = "Dimensionality reduction",
-                ylabel = "Concordance index",
-                xticks = (collect(1:size(unique(DATA_df[:,"TYPE"]))[1]), unique(DATA_df[:,"TYPE"])))
-    lines!(ax2,[0,5],[0.5,0.5], linestyle = :dot)
-    boxplot!(ax2, DATA_df.ID[DATA_df[:,"model_type"].=="cphdnn"] .- 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="cphdnn", "cph_test_c_ind"], color = "blue", label = "CPHDNN")
-    boxplot!(ax2, DATA_df.ID[DATA_df[:,"model_type"].=="coxridge"] .+ 0.2, width = 0.5,  DATA_df[DATA_df[:,"model_type"].=="coxridge", "cph_test_c_ind"], color = "orange", label = "Cox-Ridge")
-    medians = combine(groupby(DATA_df[:,["ID", "model_type", "cph_test_c_ind"]], ["ID", "model_type"]), :cph_test_c_ind=>median) 
-    text!(ax2, medians.ID[medians.model_type .== "cphdnn"].-0.35, medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "cphdnn",:].cph_test_c_ind_median, digits = 3)))
-    text!(ax2, medians.ID[medians.model_type .== "coxridge"] .+ 0.04, medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median .+ offshift, text= string.(round.(medians[medians.model_type .== "coxridge",:].cph_test_c_ind_median, digits = 3)))
-    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.svg",fig)
-    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.png",fig)
-    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.pdf",fig)
-    return fig
-end
-make_boxplots(PARAMS)
+
+make_boxplots(PARAMS, test_metric = "cph_tst_c_ind_med")
 
 LC = gather_learning_curves("RES_FIG23/")
 names(LC)
