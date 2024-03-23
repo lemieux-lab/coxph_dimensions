@@ -7,51 +7,7 @@ include("engines/figures.jl")
 RES = gather_params("RES_FIG1");
 RES = RES[isnan.(RES[:,"cph_test_c_ind"]).== 0,:]
 RES[RES[:,"model_type"] .== "coxridge", ["cph_lr", "cph_wd", "cph_hl_size", "cph_nb_hl"]]
-fig = Figure(size=(700,700));
-for (dname, coords) in zip(unique(RES[:,"dataset"]), [(1,1),(1,2),(2,1),(2,2)])
-    data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "STD" ,:]
-    ds_size = unique(data_df[:,"nsamples"])[1]
-    ticks = [1,10,100,1000,maximum(data_df[:,"insize"])]
-    row, col = coords
-    SMA_K, SMA_N = 10,10 
-    #yticks = (collect(1:100)/100, [x * 100 % 2 == 0 ? "$x" : "" for x in collect(1:100)/100])
-    #dname == "LGG" ? yticks =  (collect(1:50)/50, [x * 100 % 4 == 0 ? "$x" : "" for x in collect(1:50)/50]) : yticks
-    ax = Axis(fig[row,col],
-            xticks = (log10.(ticks),string.(ticks)),
-            yticks = (collect(1:100)/100, [Int(round(x * 100)) % 2 == 0 ? "$x" : "" for x in collect(1:100)/100]),
-            title = "$dname (n=$ds_size)",
-            xlabel = "Input size",
-            ylabel = "concordance index",
-            limits = (nothing, nothing, 0.48, nothing))
-    lines!(ax,log10.(ticks[[1,end]]),[0.5,0.5],linestyle = :dash)
-    draw_scatter_sma!(ax,   data_df[data_df[:,"model_type"] .== "cphdnn","insize"], 
-                            data_df[data_df[:,"model_type"] .== "cphdnn","cph_test_c_ind"],
-                        "blue", "CPHDNN-STD", 0, :solid, SMA_K,SMA_N,text_on = false)
-    draw_scatter_sma!(ax,   data_df[data_df[:,"model_type"] .== "coxridge","insize"], 
-                        data_df[data_df[:,"model_type"] .== "coxridge","cph_test_c_ind"],
-                    "blue", "COXRIDGE-STD", 0, :dash, SMA_K,SMA_N,text_on = false)
-    data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "RDM" ,:]
-    draw_scatter_sma!(ax,   data_df[data_df[:,"model_type"] .== "cphdnn","insize"], 
-                            data_df[data_df[:,"model_type"] .== "cphdnn","cph_test_c_ind"],
-                        "orange", "CPHDNN-RDM", 0, :solid, SMA_K,SMA_N,text_on = false)
-    draw_scatter_sma!(ax,   data_df[data_df[:,"model_type"] .== "coxridge","insize"], 
-                        data_df[data_df[:,"model_type"] .== "coxridge","cph_test_c_ind"],
-                    "orange", "COXRIDGE-RDM", 0, :dash, SMA_K,SMA_N,text_on = false)
-    data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "PCA" ,:]
-    draw_scatter_sma!(ax,   data_df[data_df[:,"model_type"] .== "cphdnn","insize"], 
-                                            data_df[data_df[:,"model_type"] .== "cphdnn","cph_test_c_ind"],
-                                        "black", "CPHDNN-PCA", 0, :solid, SMA_K,SMA_N, text_on=false)
-    draw_scatter_sma!(ax,   data_df[data_df[:,"model_type"] .== "coxridge","insize"], 
-                                        data_df[data_df[:,"model_type"] .== "coxridge","cph_test_c_ind"],
-                                    "black", "COXRIDGE-PCA", 0, :dash, SMA_K,SMA_N, text_on=false)
-                    
-    coords === (1,2) ? axislegend(ax, framewidth =0, position = :rb, labelsize = 10, patchlabelgap = 0, padding = (0,0,0,0)) : 1   
-end 
-CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.pdf", fig)
-CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.png", fig)
-CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.svg", fig)
-
-fig
+make_multi_scatterplot(RES; test_metric = "cph_tst_c_ind_med")
 
 SMA_K, SMA_N = 5,10
 fig = Figure();
