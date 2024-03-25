@@ -96,6 +96,13 @@ nepochs,nfolds = 5000, 5
 # LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
 # evaluate_coxridge(LGNAML_data, ngenes; dim_redux_type = "CDS-LSC17", nepochs =nepochs, cph_lr = 1e-5);
 # evaluate_cphdnn(LGNAML_data, ngenes; dim_redux_type = "CDS-LSC17", nepochs =nepochs, cph_wd = 1e-2);
+### EVAL LGNAML PCA w\ LSC17 
+LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
+LGNAML_data["CDS"] =  [~(gene in LSC17[:,"alt_name"]) & (keep_lgnaml_common[gene_id] == 1) for (gene_id, gene) in enumerate(LGNAML_data["dataset"].genes)];
+train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
+LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
+evaluate_cphdnn_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_wd = 1e-2);
+evaluate_coxridge_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_lr = 1e-4);
 
 ### EVAL LGNAML CLIN F
 # lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
@@ -107,11 +114,11 @@ nepochs,nfolds = 5000, 5
 # evaluate_cphdnn(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
 
 ### EVAL LGNAML CYTO RISK
-lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
-CF_bin, lnames = numerise_labels(lgn_CF, ["Cytogenetic risk" ])
-LGNAML_data["CF"] = CF_bin
-evaluate_coxridge(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs, cph_lr = 1e-3);
-evaluate_cphdnn(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
+# lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
+# CF_bin, lnames = numerise_labels(lgn_CF, ["Cytogenetic risk" ])
+# LGNAML_data["CF"] = CF_bin
+# evaluate_coxridge(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs, cph_lr = 1e-3);
+# evaluate_cphdnn(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
 
 # ### EVAL LGNAML CLIN F w\ cyto risk group
 # CF_bin, lnames = numerise_labels(lgn_CF, ["Sex", "NPM1 mutation", "IDH1-R132 mutation", "FLT3-ITD mutation"])

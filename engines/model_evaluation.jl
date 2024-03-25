@@ -29,7 +29,7 @@ function prep_data_params_dict!(DataSet, dim_redux_size;
         VARS = var(CDS_data, dims = 1)
         genes = reverse(sortperm(vec(VARS)))[1:dim_redux_size]
         X_data = CDS_data[:,genes] 
-    elseif dim_redux_type == "PCA"
+    elseif occursin(dim_redux_type, "PCA")
         X_data = CDS_data
     else ## dim redux type is RDM 
         X_data =  CDS_data[:,sample(collect(1:size(CDS_data)[2]), dim_redux_size, replace=false)]    
@@ -89,8 +89,8 @@ end
 function dump_results!(DS, LOSSES_BY_FOLD, OUTS_TST, Y_T_TST, Y_E_TST, train_cinds, test_cinds)
     med_c_ind, lo_ci, up_ci, c_indices= bootstrap_c_ind(OUTS_TST, Y_T_TST, Y_E_TST)
     DS["params"]["cph_tst_c_ind_med"] = med_c_ind
-    DS["params"]["cph_tst_c_ind_up_ci"] = lo_ci
-    DS["params"]["cph_tst_c_ind_lo_ci"] = up_ci
+    DS["params"]["cph_tst_c_ind_up_ci"] = up_ci
+    DS["params"]["cph_tst_c_ind_lo_ci"] = lo_ci
     DS["params"]["cph_train_c_ind"] = mean(train_cinds)
     DS["params"]["cph_test_c_ind"] = mean(test_cinds)
     DS["params"]["model_cv_complete"] = true
@@ -213,7 +213,7 @@ function evaluate_coxridge_pca(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cp
         "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
         # fit PCA 
         # fit PCA 
-        P = fit_pca(cpu(train_x), dim_redux_size);
+        @time P = fit_pca(cpu(train_x), dim_redux_size);
         train_x = gpu(Matrix(hcat(transform_pca(cpu(train_x), P)', DS["CF"][fold["train_ids"],:])'))
         test_x = gpu(Matrix(hcat(transform_pca(cpu(test_x), P)', DS["CF"][fold["test_ids"],:])'))
         DS["params"]["insize"] = size(train_x)[1] + DS["params"]["nb_clinf"]
@@ -242,18 +242,6 @@ function evaluate_coxridge_pca(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cp
         push!(Y_E_TST, vec(cpu(DS["data_prep"]["test_y_e"])))
         DS["params"]["nparams"] = size(train_x)[1]
     end 
-    med_c_ind, lo_ci, up_ci, c_indices= bootstrap_c_ind(OUTS_TST, Y_T_TST, Y_E_TST)
-    DS["params"]["cph_tst_c_ind_med"] = med_c_ind
-    DS["params"]["cph_tst_c_ind_up_ci"] = lo_ci
-    DS["params"]["cph_tst_c_ind_lo_ci"] = up_ci
-    DS["params"]["cph_train_c_ind"] = mean(train_cinds)
-    DS["params"]["cph_test_c_ind"] = mean(test_cinds)
-    DS["params"]["model_cv_complete"] = true
-    DS["params"]["model_title"] = "$(DS["params"]["dataset"])_$(DS["params"]["model_type"])_$(DS["params"]["dim_redux_type"])_$(DS["params"]["insize"])_$(DS["params"]["nb_clinf"])CF"
-
-    println("TEST bootstrap c-index : $(med_c_ind) ($up_ci - $lo_ci 95% CI)")
-    println("TEST average c-index ($nfolds folds): $(round(DS["params"]["cph_test_c_ind"],digits=3))")
-    
     c_indices_tst = dump_results!(DS, LOSSES_BY_FOLD, OUTS_TST, Y_T_TST, Y_E_TST, train_cinds, test_cinds)
     return c_indices_tst
 end

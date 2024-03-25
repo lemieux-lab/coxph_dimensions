@@ -4,6 +4,7 @@ include("engines/data_processing.jl")
 include("engines/deep_learning.jl")
 include("engines/cross_validation.jl")
 include("engines/model_evaluation.jl")
+include("engines/figures.jl")
 PARAMS = gather_params("RES_FIG23/")
 PARAMS[:,"TYPE"] = replace.(["$x-$y" for (x,y) in  zip(PARAMS[:, "dim_redux_type"], PARAMS[:, "insize"])], "RDM"=>"CDS")
 
