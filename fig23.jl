@@ -17,11 +17,11 @@ LC = gather_learning_curves("RES_FIG23/")
 names(LC)
 #LC[:,"TYPE"] = ["$x-$y" for (x,y) in  zip(LC[:, "dim_redux_type"], LC[:, "insize"])]
 
-LOSSES_DF = innerjoin(LC, PARAMS, on = "modelid");
-fig = Figure(size = (1024,400));
+LOSSES_DF = innerjoin(LC, sort(PARAMS, ["TYPE"]), on = "modelid");
 TRUNC_DF = LOSSES_DF[(LOSSES_DF.steps .% 100 .== 0) .| (LOSSES_DF.steps .== 1),:]
+fig = Figure(size = (1600,400));
 for (row_id, dataset) in enumerate(["LgnAML", "BRCA"])
-    DATA_df = TRUNC_DF[TRUNC_DF[:,"dataset"] .== dataset,:]
+    DATA_df = sort(TRUNC_DF[TRUNC_DF[:,"dataset"] .== dataset,:], ["TYPE"])
     for (col_id, TYPE) in enumerate(unique(DATA_df.TYPE))
         DRD_df = DATA_df[DATA_df[:,"TYPE"] .== TYPE,:]
         DRD_df = DRD_df[DRD_df[:,"model_type"] .== "cphdnn",:]
@@ -45,10 +45,9 @@ CairoMakie.save("figures/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.s
 CairoMakie.save("figures/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.png",fig)
 CairoMakie.save("figures/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.pdf",fig)
 
-fig = Figure(size = (1024,400));
-TRUNC_DF = LOSSES_DF[(LOSSES_DF.steps .% 100 .== 0) .| (LOSSES_DF.steps .== 1),:]
+fig = Figure(size = (1600,400));
 for (row_id, dataset) in enumerate(["LgnAML", "BRCA"])
-    DATA_df = TRUNC_DF[TRUNC_DF[:,"dataset"] .== dataset,:]
+    DATA_df = sort(TRUNC_DF[TRUNC_DF[:,"dataset"] .== dataset,:], ["TYPE"])
     for (col_id, TYPE) in enumerate(unique(DATA_df.TYPE))
         DRD_df = DATA_df[DATA_df[:,"TYPE"] .== TYPE,:]
         DRD_df = DRD_df[DRD_df[:,"model_type"] .== "coxridge",:]
@@ -66,6 +65,7 @@ for (row_id, dataset) in enumerate(["LgnAML", "BRCA"])
         end 
     end 
 end 
+fig
 #axislegend(ax1)
 CairoMakie.save("figures/figure3_coxridge_lgnaml_brca_rdm_pca_clinf_sign_overfit.svg",fig)
 CairoMakie.save("figures/figure3_coxridge_lgnaml_brca_rdm_pca_clinf_sign_overfit.png",fig)
