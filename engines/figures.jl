@@ -1,3 +1,51 @@
+function draw_mean_lines(ax, XY, ls, col, label)
+    XY_values = sort(combine(groupby(XY, ["insize"]), "cph_tst_c_ind_med"=>mean), ["insize"])
+    lines!(ax, log10.(XY_values[:,1]), XY_values[:,2], linestyle=ls, color = col, label = label, linewidth = 3)
+end 
+function draw_multi_mean_lines(RES;test_metric = "cph_test_c_ind")
+    fig = Figure(size=(700,700));
+    for (dname, coords) in zip(unique(RES[:,"dataset"]), [(1,1),(1,2),(2,1),(2,2)])
+        data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "STD" ,:]
+        ds_size = unique(data_df[:,"nsamples"])[1]
+        ticks = [1,10,100,1000,maximum(data_df[:,"insize"])]
+        row, col = coords
+        SMA_K, SMA_N = 10,10 
+        #yticks = (collect(1:100)/100, [x * 100 % 2 == 0 ? "$x" : "" for x in collect(1:100)/100])
+        #dname == "LGG" ? yticks =  (collect(1:50)/50, [x * 100 % 4 == 0 ? "$x" : "" for x in collect(1:50)/50]) : yticks
+        ax = Axis(fig[row,col],
+                xticks = (log10.(ticks),string.(ticks)),
+                yticks = (collect(1:100)/100, [Int(round(x * 100)) % 2 == 0 ? "$x" : "" for x in collect(1:100)/100]),
+                title = "$dname (n=$ds_size)",
+                xlabel = "Input size",
+                ylabel = "concordance index",
+                limits = (nothing, nothing, 0.48, nothing))
+        lines!(ax,log10.(ticks[[1,end]]),[0.5,0.5],linestyle = :dash)
+        # BLUE SOLID
+        draw_mean_lines(ax,  data_df[data_df[:,"model_type"] .== "cphdnn",["insize", "cph_tst_c_ind_med"]], :solid, :blue, "CPHDNN-STD")
+        # BLUE DASH 
+        draw_mean_lines(ax,  data_df[data_df[:,"model_type"] .== "coxridge",["insize", "cph_tst_c_ind_med"]], :dash, :blue, "COXRIDGE-STD")
+        
+        data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "RDM" ,:]
+        # ORANGE SOLID
+        draw_mean_lines(ax,  data_df[data_df[:,"model_type"] .== "cphdnn",["insize", "cph_tst_c_ind_med"]], :solid, :orange, "CPHDNN-RDM")
+        # ORANGE DASH 
+        draw_mean_lines(ax,  data_df[data_df[:,"model_type"] .== "coxridge",["insize", "cph_tst_c_ind_med"]], :dash, :orange, "COXRIDGE-RDM")
+        
+        data_df = RES[RES[:,"dataset"].== dname .&& RES[:,"dim_redux_type"] .== "PCA" ,:]
+        # BLACK SOLID
+        draw_mean_lines(ax,  data_df[data_df[:,"model_type"] .== "cphdnn",["insize", "cph_tst_c_ind_med"]], :solid, :black, "CPHDNN-PCA")
+        # BLACK DASH 
+        draw_mean_lines(ax,  data_df[data_df[:,"model_type"] .== "coxridge",["insize", "cph_tst_c_ind_med"]], :dash, :black, "COXRIDGE-PCA")
+                        
+        coords === (1,2) ? axislegend(ax, framewidth =0, position = :rb, labelsize = 10, patchlabelgap = 0, padding = (0,0,0,0)) : 1   
+    end 
+    CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.pdf", fig)
+    CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.png", fig)
+    CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.svg", fig)
+
+    return fig
+end 
+
 function make_multi_scatterplot(RES;test_metric = "cph_test_c_ind")
     fig = Figure(size=(700,700));
     for (dname, coords) in zip(unique(RES[:,"dataset"]), [(1,1),(1,2),(2,1),(2,2)])

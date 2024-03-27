@@ -6,9 +6,12 @@ include("engines/model_evaluation.jl")
 include("engines/figures.jl")
 RES = gather_params("RES_FIG1");
 RES = RES[isnan.(RES[:,"cph_test_c_ind"]).== 0,:]
-RES[RES[:,"model_type"] .== "coxridge", ["cph_lr", "cph_wd", "cph_hl_size", "cph_nb_hl"]]
-make_multi_scatterplot(RES; test_metric = "cph_tst_c_ind_med")
+dname = "LgnAML"
+draw_multi_mean_lines(RES, test_metric = "cph_tst_c_ind_med")
 
+# make_multi_scatterplot(RES; test_metric = "cph_tst_c_ind_med")
+
+## SPOT CHECK
 SMA_K, SMA_N = 5,10
 fig = Figure();
 dname = "LGG"
