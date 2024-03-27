@@ -39,7 +39,7 @@ function draw_multi_mean_lines(RES;test_metric = "cph_test_c_ind")
                         
         coords === (1,2) ? axislegend(ax, framewidth =0, position = :rb, labelsize = 10, patchlabelgap = 0, padding = (0,0,0,0)) : 1   
     end 
-    CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.pdf", fig)
+    CairoMakie.save("figures/PDF/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.pdf", fig)
     CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.png", fig)
     CairoMakie.save("figures/figure1_lgnaml_brca_ov_lgg_rdm_std_dim_sweep.svg", fig)
 
@@ -136,7 +136,7 @@ function make_boxplots(PARAMS;test_metric = "cph_test_c_ind")
     text!(ax2, medians.ID[medians.model_type .== "coxridge"] .+ 0.04, medians[medians.model_type .== "coxridge","$(test_metric)_median"] .+ offshift, text= string.(round.(medians[medians.model_type .== "coxridge","$(test_metric)_median"], digits = 3)))
     CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.svg",fig)
     CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.png",fig)
-    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.pdf",fig)
+    CairoMakie.save("figures/PDF/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.pdf",fig)
     return fig
 end
 

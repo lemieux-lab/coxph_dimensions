@@ -48,13 +48,15 @@ ax2 = Axis(fig[4,1],
 limits= (1,300,nothing,nothing), ylabel = "Sum of weights (absolute)", xlabel="Principal component")
 lines!(ax2, collect(1:300), vec(sum(abs.(P[1:300, lsc17_in_lgnaml]), dims = 2)) )
 fig
-CairoMakie.save("figures/figure4_lsc17_PCA_contributions.pdf", fig)
+CairoMakie.save("figures/PDF/figure4_lsc17_PCA_contributions.pdf", fig)
+CairoMakie.save("figures/figure4_lsc17_PCA_contributions.png", fig)
+CairoMakie.save("figures/figure4_lsc17_PCA_contributions.svg", fig)
+
 ### LGN PCA => CLINF 
 ## X x PC1 => CLINF
 X_tr_pca = transform_pca(train_x', P)
 lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
 CF_bin, lnames = numerise_labels(lgn_CF, ["Sex","Cytogenetic risk", "NPM1 mutation", "IDH1-R132 mutation", "FLT3-ITD mutation", ])
-lnames
 fig = Figure(size = (800,1000));
 ax3 = Axis(fig[1,1], xlabel = "Clinical feature", 
     title = "Correlation bewtween PCA first 30 components \nand clinical factors in Leucegene (n=300)",
@@ -70,4 +72,6 @@ MM = [[my_cor(X_tr_pca[j,:], CF_bin[:,i]) for i in 1:size(lnames)[1]] for j in 1
 hm2 = heatmap!(ax3, abs.(hcat(MM...) .^ 2), colormap = :Blues)
 Colorbar(fig[1,2], hm2, label = "R2 Correlation Coefficient")
 fig
-CairoMakie.save("figures/figure4_PCA_to_clinical_features_correlations.pdf", fig)
+CairoMakie.save("figures/PDF/figure4_PCA_to_clinical_features_correlations.pdf", fig)
+CairoMakie.save("figures/figure4_PCA_to_clinical_features_correlations.png", fig)
+CairoMakie.save("figures/figure4_PCA_to_clinical_features_correlations.svg", fig)

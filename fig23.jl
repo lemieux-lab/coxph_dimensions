@@ -43,7 +43,7 @@ fig
 #axislegend(ax1)
 CairoMakie.save("figures/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.svg",fig)
 CairoMakie.save("figures/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.png",fig)
-CairoMakie.save("figures/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.pdf",fig)
+CairoMakie.save("figures/PDF/figure3_cphdnn_lgnaml_brca_rdm_pca_clinf_sign_overfit.pdf",fig)
 
 fig = Figure(size = (1600,400));
 for (row_id, dataset) in enumerate(["LgnAML", "BRCA"])
@@ -69,6 +69,6 @@ fig
 #axislegend(ax1)
 CairoMakie.save("figures/figure3_coxridge_lgnaml_brca_rdm_pca_clinf_sign_overfit.svg",fig)
 CairoMakie.save("figures/figure3_coxridge_lgnaml_brca_rdm_pca_clinf_sign_overfit.png",fig)
-CairoMakie.save("figures/figure3_coxridge_lgnaml_brca_rdm_pca_clinf_sign_overfit.pdf",fig)
+CairoMakie.save("figures/PDF/figure3_coxridge_lgnaml_brca_rdm_pca_clinf_sign_overfit.pdf",fig)
 
 fig
