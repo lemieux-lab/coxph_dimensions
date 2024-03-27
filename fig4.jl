@@ -37,14 +37,37 @@ train_x = LGNAML_data["dataset"].data[:,keep_lgnaml]
 yticks = [gene for gene in LGNAML_data["dataset"].genes[keep_lgnaml] if gene in LSC17[:, "alt_name"] ]
 P = fit_pca(train_x', size(train_x)[1])
 fig = Figure(size = (1024,512));
-ax = Axis(fig[1:3,1], yticks = (collect(1:size(yticks)[1]), yticks))
+ax = Axis(fig[1:3,1], 
+    title = "LSC17 gene signature weight contributions (in absolute value) to PCA principal components on Leucegene data (n=300)", 
+    ylabel = "LSC17 gene name", 
+    yticks = (collect(1:size(yticks)[1]), yticks))
 # scale = ReversibleScale(x -> asinh(x / 2) / log(10), x -> 2sinh(log(10) * x))
 hm = heatmap!(ax, abs.(P[1:300, lsc17_in_lgnaml]), colormap = :Blues)
 Colorbar(fig[1:3,2], hm)
-ax2 = Axis(fig[4,1],limits= (1,300,nothing,nothing), ylabel = "Total abs(weights)", xlabel="Principal component")
+ax2 = Axis(fig[4,1],
+limits= (1,300,nothing,nothing), ylabel = "Sum of weights (absolute)", xlabel="Principal component")
 lines!(ax2, collect(1:300), vec(sum(abs.(P[1:300, lsc17_in_lgnaml]), dims = 2)) )
 fig
-X_tr_pca = transform_pca(train_x', P)
-
-
+CairoMakie.save("figures/figure4_lsc17_PCA_contributions.pdf", fig)
 ### LGN PCA => CLINF 
+## X x PC1 => CLINF
+X_tr_pca = transform_pca(train_x', P)
+lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
+CF_bin, lnames = numerise_labels(lgn_CF, ["Sex","Cytogenetic risk", "NPM1 mutation", "IDH1-R132 mutation", "FLT3-ITD mutation", ])
+lnames
+fig = Figure(size = (800,1000));
+ax3 = Axis(fig[1,1], xlabel = "Clinical feature", 
+    title = "Correlation bewtween PCA first 30 components \nand clinical factors in Leucegene (n=300)",
+    xticks = (collect(1:size(lnames)[1]) .- 0.5, lnames),
+    xticksmirrored = true,
+    xaxisposition = :top,
+    yreversed = true,  
+    xticklabelrotation = 0.5, 
+    # aspect = DataAspect(),
+    yticks = (collect(1:30), string.(collect(1:30))),
+    ylabel = "Principal component")
+MM = [[my_cor(X_tr_pca[j,:], CF_bin[:,i]) for i in 1:size(lnames)[1]] for j in 1:30]
+hm2 = heatmap!(ax3, abs.(hcat(MM...) .^ 2), colormap = :Blues)
+Colorbar(fig[1,2], hm2, label = "R2 Correlation Coefficient")
+fig
+CairoMakie.save("figures/figure4_PCA_to_clinical_features_correlations.pdf", fig)
