@@ -86,6 +86,41 @@ function train_model!(MODEL, OPT, DS;foldn=0, print_step = 500)
     return LOSS_TR, LOSS_TST
 end
 
+
+function train_model_debug!(MODEL, OPT, DS;foldn=0, print_step = 500)
+    last_model = MODEL
+    next_model = MODEL
+    cph_wd = DS["params"]["cph_wd"]
+    LOSS_TR, LOSS_TST = [],[]
+    for i in 1:DS["params"]["nepochs"]
+        last_model = deepcopy(next_model) 
+        cph_ps = Flux.params(MODEL)
+        cph_gs = gradient(cph_ps) do 
+            lossfn_tr(MODEL, DS, cph_wd)
+        end 
+        #meta_eval(cphdnn, tcga_datasets, base_params, verbose = i, verbose_step = 1)
+        OUTS_tst = MODEL(DS["data_prep"]["test_x"])
+        OUTS_tr = MODEL(DS["data_prep"]["train_x"])
+        lossval_tr = round(lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]), digits = 3)
+        lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]), digits = 3)
+        push!(LOSS_TR, lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]))
+        push!(LOSS_TST, lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]))        
+        cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
+        cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
+        Flux.update!(OPT, cph_ps, cph_gs)
+        if i % print_step ==  0 || i == 1
+            println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - $i : TRAIN c-ind: $(round(cind_tr, digits = 3)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
+        end 
+        next_model = MODEL
+        if ~(lossval_tr == lossval_tr)
+            return last_model, next_model 
+        end 
+        
+    end
+    return LOSS_TR, LOSS_TST
+end
+
+
 function dump_results!(DS, LOSSES_BY_FOLD, OUTS_TST, Y_T_TST, Y_E_TST, train_cinds, test_cinds)
     med_c_ind, lo_ci, up_ci, c_indices= bootstrap_c_ind(OUTS_TST, Y_T_TST, Y_E_TST)
     DS["params"]["cph_tst_c_ind_med"] = med_c_ind
@@ -132,7 +167,7 @@ function evaluate_coxridge(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cph_nb
         
         ## init model and opt
         OPT = Flux.ADAM(DS["params"]["cph_lr"]) 
-        MODEL = gpu(Chain(Dense(DS["params"]["insize"], 1, bias = false)))
+        MODEL = gpu(Chain(Dense(DS["params"]["insize"], 1, sigmoid, bias = false)))
         
         # train loop 
         LOSS_TR, LOSS_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
@@ -173,7 +208,7 @@ function evaluate_cphdnn(DS, dim_redux_size;hlsize = 512, nepochs= 5_000, cph_nb
         OPT = Flux.ADAM(DS["params"]["cph_lr"]) 
         MODEL = gpu(Chain(Dense(DS["params"]["insize"],DS["params"]["cph_hl_size"], leakyrelu), 
         Dense(DS["params"]["cph_hl_size"], DS["params"]["cph_hl_size"], leakyrelu), 
-        Dense(DS["params"]["cph_hl_size"], 1, bias = false)))
+        Dense(DS["params"]["cph_hl_size"], 1, sigmoid,  bias = false)))
         
         # train loop 
         LOSS_TR, LOSS_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
@@ -223,7 +258,7 @@ function evaluate_coxridge_pca(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cp
         ## init model 
         ## init model and opt
         OPT = Flux.ADAM(DS["params"]["cph_lr"]) 
-        MODEL = gpu(Chain(Dense(DS["params"]["insize"], 1, bias = false)))
+        MODEL = gpu(Chain(Dense(DS["params"]["insize"], 1, sigmoid, bias = false)))
         
         # train loop 
         LOSS_TR, LOSS_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
@@ -271,7 +306,7 @@ function evaluate_cphdnn_pca(DS, dim_redux_size;hlsize = 512, nepochs= 5_000, cp
     OPT = Flux.ADAM(DS["params"]["cph_lr"]) 
     MODEL = gpu(Chain(Dense(DS["params"]["insize"],DS["params"]["cph_hl_size"], leakyrelu), 
         Dense(DS["params"]["cph_hl_size"], DS["params"]["cph_hl_size"], leakyrelu), 
-        Dense(DS["params"]["cph_hl_size"], 1, bias = false)))
+        Dense(DS["params"]["cph_hl_size"], 1, sigmoid, bias = false)))
         
     # train loop 
     LOSS_TR, LOSS_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])

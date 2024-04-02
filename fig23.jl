@@ -17,8 +17,24 @@ LC = gather_learning_curves("RES_FIG23/")
 names(LC)
 #LC[:,"TYPE"] = ["$x-$y" for (x,y) in  zip(LC[:, "dim_redux_type"], LC[:, "insize"])]
 
+PARAMS = PARAMS[PARAMS[:,"nepochs"] .== 1_000_000,:]
 LOSSES_DF = innerjoin(LC, sort(PARAMS, ["TYPE"]), on = "modelid");
 TRUNC_DF = LOSSES_DF[(LOSSES_DF.steps .% 100 .== 0) .| (LOSSES_DF.steps .== 1),:]
+DATA_df = sort(TRUNC_DF[TRUNC_DF[:,"dataset"] .== "BRCA",:], ["TYPE"])
+fig = Figure(size = (512,512));
+ax = Axis(fig[1,1], xlabel = "steps", ylabel = "Loss value", )
+DRD_df = DATA_df[DATA_df[:,"model_type"] .== "cphdnn",:]
+        
+for modelid in unique(DRD_df[:, "modelid"])
+    MOD_df = DRD_df[DRD_df[:,"modelid"] .== modelid, :]
+    for foldn in 1:5
+        FOLD_data = sort(MOD_df[MOD_df[:,"foldns"] .== foldn,:], "steps")
+        lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "train","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "train","loss_vals"], color = "blue") 
+        lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "test","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "test","loss_vals"], color = "orange")
+    end    
+end
+fig
+
 fig = Figure(size = (1600,400));
 for (row_id, dataset) in enumerate(["LgnAML", "BRCA"])
     DATA_df = sort(TRUNC_DF[TRUNC_DF[:,"dataset"] .== dataset,:], ["TYPE"])

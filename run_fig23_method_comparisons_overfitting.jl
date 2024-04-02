@@ -24,7 +24,7 @@ outpath, session_id = set_dirs("RES_FIG23") ;
 #DataDict = load_tcga_datasets(tcga_datasets_list)["BRCA"]
 #clinical_factors = Matrix(CSV.read("Data/GDC_processed/TCGA_BRCA_clinical_bin.csv", DataFrame))
 # clinical_factors = Matrix(tmp_df)
-for rep_i in 1:3
+# for rep_i in 1:3
 tcga_datasets_list = ["Data/TCGA_datasets/$(x)" for x in readdir("Data/TCGA_OV_BRCA_LGG/") ]
 TCGA_datasets = load_tcga_datasets(tcga_datasets_list);
 BRCA_data = TCGA_datasets["BRCA"]
@@ -49,25 +49,25 @@ LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0)
 ### Use random vs pca 
 ### Use CPHDNN, Cox-ridge 
 ### 10 replicates
-nepochs,nfolds = 5000, 5
+nepochs,nfolds = 30_000, 5
 # DS_list = shuffle([BRCA_data, LGNAML_data, LGG_data, OV_data])
 ### EVAL BRCA CDS 
 # ngenes = sum(BRCA_data["CDS"])
 # CDS_data = BRCA_data["dataset"].data[:,BRCA_data["CDS"]]
 # evaluate_cphdnn(BRCA_data, ngenes, nepochs =nepochs, cph_wd =1e-2, dim_redux_type="RDM");
 # evaluate_coxridge(BRCA_data, ngenes, nepochs =nepochs, cph_lr = 1e-5, dim_redux_type="RDM");
-# ### EVAL BRCA PCA 
-# train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
-# evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=nepochs, cph_wd= 1e-2);
+### EVAL BRCA PCA 
+train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
+evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=nepochs, cph_wd= 1e-3, cph_lr = 1e-6);
 # evaluate_coxridge_pca(BRCA_data, train_size, nepochs=nepochs, cph_lr = 1e-4);
-# ### EVAL BRCA PAM50 
+### EVAL BRCA PAM50 
 # PAM50 = CSV.read("Data/GDC_processed/PAM50_genes_processed.csv", DataFrame)
 # BRCA_data["CDS"] =  [gene in PAM50[:,"alt_name"] for gene in BRCA_data["dataset"].genes];
 # BRCA_data["CF"] = zeros(size(BRCA_data["dataset"].data)[1],0); 
 # evaluate_coxridge(BRCA_data, sum(BRCA_data["CDS"]); dim_redux_type = "PAM50", nepochs =nepochs, cph_lr = 1e-3);
 # evaluate_cphdnn(BRCA_data, sum(BRCA_data["CDS"]); dim_redux_type = "PAM50", nepochs =nepochs);
 
-# ### EVAL BRCA CLIN F 
+### EVAL BRCA CLIN F 
 # clinical_factors = Matrix(CSV.read("Data/GDC_processed/TCGA_BRCA_clinical_bin.csv", DataFrame))
 # BRCA_data["CF"] = clinical_factors
 # evaluate_coxridge(BRCA_data, 0; dim_redux_type = "CLINF", nepochs =nepochs, cph_lr = 1e-3);
@@ -97,12 +97,12 @@ nepochs,nfolds = 5000, 5
 # evaluate_coxridge(LGNAML_data, ngenes; dim_redux_type = "CDS-LSC17", nepochs =nepochs, cph_lr = 1e-5);
 # evaluate_cphdnn(LGNAML_data, ngenes; dim_redux_type = "CDS-LSC17", nepochs =nepochs, cph_wd = 1e-2);
 ### EVAL LGNAML PCA w\ LSC17 
-LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
-LGNAML_data["CDS"] =  [~(gene in LSC17[:,"alt_name"]) & (keep_lgnaml_common[gene_id] == 1) for (gene_id, gene) in enumerate(LGNAML_data["dataset"].genes)];
-train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
-LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
-evaluate_cphdnn_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_wd = 1e-2);
-evaluate_coxridge_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_lr = 1e-4);
+# LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
+# LGNAML_data["CDS"] =  [~(gene in LSC17[:,"alt_name"]) & (keep_lgnaml_common[gene_id] == 1) for (gene_id, gene) in enumerate(LGNAML_data["dataset"].genes)];
+# train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
+# LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
+# evaluate_cphdnn_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_wd = 1e-2);
+# evaluate_coxridge_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_lr = 1e-4);
 
 ### EVAL LGNAML CLIN F
 # lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
@@ -128,5 +128,5 @@ evaluate_coxridge_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nep
 # evaluate_coxridge(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs, cph_lr = 1e-3);
 # evaluate_cphdnn(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
 # LGNAML_data["params"]
-end
+# end
 
