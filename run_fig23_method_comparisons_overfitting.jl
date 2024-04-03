@@ -49,17 +49,16 @@ LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0)
 ### Use random vs pca 
 ### Use CPHDNN, Cox-ridge 
 ### 10 replicates
-nepochs,nfolds = 30_000, 5
+nfolds =  5
 # DS_list = shuffle([BRCA_data, LGNAML_data, LGG_data, OV_data])
 ### EVAL BRCA CDS 
-# ngenes = sum(BRCA_data["CDS"])
-# CDS_data = BRCA_data["dataset"].data[:,BRCA_data["CDS"]]
-# evaluate_cphdnn(BRCA_data, ngenes, nepochs =nepochs, cph_wd =1e-2, dim_redux_type="RDM");
-# evaluate_coxridge(BRCA_data, ngenes, nepochs =nepochs, cph_lr = 1e-5, dim_redux_type="RDM");
+ngenes = sum(BRCA_data["CDS"])
+evaluate_coxridge(BRCA_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
+evaluate_cphdnn(BRCA_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type="RDM");
 ### EVAL BRCA PCA 
 train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
-evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=nepochs, cph_wd= 1e-3, cph_lr = 1e-6);
-# evaluate_coxridge_pca(BRCA_data, train_size, nepochs=nepochs, cph_lr = 1e-4);
+evaluate_coxridge_pca(BRCA_data, train_size, nepochs=350_000, cph_wd= 1e-6,cph_lr = 1e-6);
+evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
 ### EVAL BRCA PAM50 
 # PAM50 = CSV.read("Data/GDC_processed/PAM50_genes_processed.csv", DataFrame)
 # BRCA_data["CDS"] =  [gene in PAM50[:,"alt_name"] for gene in BRCA_data["dataset"].genes];
@@ -75,13 +74,13 @@ evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=nepochs, cph_wd= 1e-3, cph_lr
 
 
 # ### EVAL LGNAML CDS 
-# ngenes = sum(LGNAML_data["CDS"])
-# evaluate_cphdnn(LGNAML_data, ngenes, nepochs =nepochs, cph_wd =1e-2);
-# evaluate_coxridge(LGNAML_data, ngenes, nepochs =nepochs, cph_lr = 1e-5);
+ngenes = sum(LGNAML_data["CDS"])
+evaluate_coxridge(LGNAML_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
+evaluate_cphdnn(LGNAML_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type = "RDM");
 # ### EVAL LGNAML PCA 
-# train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
-# evaluate_cphdnn_pca(LGNAML_data, train_size, nepochs=nepochs, cph_wd= 1e-2);
-# evaluate_coxridge_pca(LGNAML_data, train_size, nepochs=nepochs, cph_lr = 1e-4);
+train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
+evaluate_coxridge_pca(LGNAML_data, train_size, nepochs=350_000, cph_wd= 1e-6, cph_lr = 1e-6);
+evaluate_cphdnn_pca(LGNAML_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
 ### EVAL LGNAML LSC17 
 # LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
 # LGNAML_data["CDS"] =  [gene in LSC17[:,"alt_name"] for gene in LGNAML_data["dataset"].genes];

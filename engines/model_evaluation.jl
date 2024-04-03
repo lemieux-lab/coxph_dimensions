@@ -72,52 +72,85 @@ function train_model!(MODEL, OPT, DS;foldn=0, print_step = 500)
         #meta_eval(cphdnn, tcga_datasets, base_params, verbose = i, verbose_step = 1)
         OUTS_tst = MODEL(DS["data_prep"]["test_x"])
         OUTS_tr = MODEL(DS["data_prep"]["train_x"])
-        lossval_tr = round(lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]), digits = 3)
-        lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]), digits = 3)
+        lossval_tr = round(lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]), digits = 6)
+        lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]), digits = 6)
         push!(LOSS_TR, lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]))
         push!(LOSS_TST, lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]))        
         cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
         cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
         Flux.update!(OPT, cph_ps, cph_gs)
         if i % print_step ==  0 || i == 1
-            println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - $i : TRAIN c-ind: $(round(cind_tr, digits = 3)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
+            println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - $i : TRAIN c-ind: $(round(cind_tr, digits = 5)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
         end 
     end
     return LOSS_TR, LOSS_TST
 end
 
 
+function evaluate_cphdnn_debug(DS, dim_redux_size;hlsize = 512, nepochs= 5_000, cph_nb_hl = 2, cph_lr = 1e-6, 
+    cph_wd = 1e-4, nfolds=5, modeltype = "cphdnn",dim_redux_type ="RDM", print_step = 500)
+    folds = prep_data_params_dict!(DS, dim_redux_size, hlsize = hlsize, nepochs= nepochs, 
+        cph_nb_hl = cph_nb_hl, cph_lr = cph_lr, cph_wd = cph_wd,  modeltype = modeltype,
+        nfolds=nfolds, dim_redux_type =dim_redux_type)
+    OUTS_TST, Y_T_TST, Y_E_TST, train_cinds, test_cinds = [], [], [], [],[]
+    LOSSES_BY_FOLD  = []
+    # for fold in folds do train
+    fold = folds[1]
+    train_x, train_y_t, train_y_e, NE_frac_tr, test_x, test_y_t, test_y_e, NE_frac_tst = format_train_test(fold)
+    DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
+    "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
+    DS["params"]["insize"] = size(train_x)[1]
+
+    ## init model and opt
+    OPT = Flux.ADAM(DS["params"]["cph_lr"]) 
+    MODEL = gpu(Chain(Dense(DS["params"]["insize"],DS["params"]["cph_hl_size"], leakyrelu), 
+    Dense(DS["params"]["cph_hl_size"], DS["params"]["cph_hl_size"], leakyrelu), 
+    Dense(DS["params"]["cph_hl_size"], 1, sigmoid, bias = false)))
+    
+    # train loop 
+    prev_m, curr_m = train_model_debug!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
+    return prev_m, curr_m
+end 
+
 function train_model_debug!(MODEL, OPT, DS;foldn=0, print_step = 500)
-    last_model = MODEL
-    next_model = MODEL
+    last_model = deepcopy(MODEL)
+    # curr_model = deepcopy(MODEL) 
     cph_wd = DS["params"]["cph_wd"]
+    OUTS_tst = MODEL(DS["data_prep"]["test_x"])
+    OUTS_tr = MODEL(DS["data_prep"]["train_x"])
+    lossval_tr = round(lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]), digits = 4)
+    lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]), digits = 4)
+    cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
+    cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
+    println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - 0 : TRAIN c-ind: $(round(cind_tr, digits = 3)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
     LOSS_TR, LOSS_TST = [],[]
+    push!(LOSS_TR, lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]))
+    push!(LOSS_TST, lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]))        
+    cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
     for i in 1:DS["params"]["nepochs"]
-        last_model = deepcopy(next_model) 
+        last_model = deepcopy(MODEL)
         cph_ps = Flux.params(MODEL)
         cph_gs = gradient(cph_ps) do 
             lossfn_tr(MODEL, DS, cph_wd)
         end 
+        Flux.update!(OPT, cph_ps, cph_gs)
         #meta_eval(cphdnn, tcga_datasets, base_params, verbose = i, verbose_step = 1)
         OUTS_tst = MODEL(DS["data_prep"]["test_x"])
         OUTS_tr = MODEL(DS["data_prep"]["train_x"])
-        lossval_tr = round(lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]), digits = 3)
-        lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]), digits = 3)
+        lossval_tr = round(lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]), digits = 4)
+        lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]), digits = 4)
         push!(LOSS_TR, lossfn_tr_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_train"]))
         push!(LOSS_TST, lossfn_tst_dev(MODEL, DS, cph_wd, DS["params"]["nsamples_test"]))        
         cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
         cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
-        Flux.update!(OPT, cph_ps, cph_gs)
         if i % print_step ==  0 || i == 1
             println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - $i : TRAIN c-ind: $(round(cind_tr, digits = 3)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
         end 
-        next_model = MODEL
-        if ~(lossval_tr == lossval_tr)
-            return last_model, next_model 
+        if ~(lossval_tr == lossval_tr) || ~(cind_tr == cind_tr)
+            return last_model, deepcopy(MODEL)
         end 
-        
     end
-    return LOSS_TR, LOSS_TST
+    return last_model, deepcopy(MODEL)
 end
 
 
@@ -248,7 +281,7 @@ function evaluate_coxridge_pca(DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cp
         "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
         # fit PCA 
         # fit PCA 
-        @time P = fit_pca(cpu(train_x), dim_redux_size);
+        P = fit_pca(cpu(train_x), dim_redux_size);
         train_x = gpu(Matrix(hcat(transform_pca(cpu(train_x), P)', DS["CF"][fold["train_ids"],:])'))
         test_x = gpu(Matrix(hcat(transform_pca(cpu(test_x), P)', DS["CF"][fold["test_ids"],:])'))
         DS["params"]["insize"] = size(train_x)[1] + DS["params"]["nb_clinf"]

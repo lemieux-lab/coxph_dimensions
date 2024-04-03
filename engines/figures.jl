@@ -1,3 +1,27 @@
+function plot_hist_scores(DS, MODEL)
+    tr_outs = MODEL(DS["data_prep"]["train_x"])
+    tst_outs = MODEL(DS["data_prep"]["test_x"])
+    c_ind_tr, bli, bla, blou = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * tr_outs)
+    c_ind_tst, bli, bla, blou = concordance_index(DS["data_prep"]["test_y_t"],DS["data_prep"]["test_y_e"], -1 * tst_outs)
+    fig = Figure(size = (1024,512));
+    ax = Axis(fig[1,1], 
+    # xticks = ([1], ["training set"]),
+    title="distribution of risk scores predicted by CPHDNN in BRCA \n training set (c index = $(round(c_ind_tr, digits = 3)))")
+    hist!(ax, log10.(vec(cpu(tr_outs))[vec(cpu(DS["data_prep"]["train_y_e"] .== 1))]), bins = 30, color = :red, label = "deceased")
+    hist!(ax, log10.(vec(cpu(tr_outs))[vec(cpu(DS["data_prep"]["train_y_e"] .== 0))]), bins = 30, color = :blue, label = "alive")
+
+    axislegend(ax, position = :lc)
+    ax = Axis(fig[1,2], 
+    # xticks = ([1], ["training set"]),
+    title="distribution of risk scores predicted by CPHDNN in BRCA \n test set (c index = $(round(c_ind_tst, digits = 3)))")
+    hist!(ax, log10.(vec(cpu(tst_outs))[vec(cpu(DS["data_prep"]["test_y_e"] .== 0))]), bins = 30, color = :blue, label = "alive")
+    hist!(ax, log10.(vec(cpu(tst_outs))[vec(cpu(DS["data_prep"]["test_y_e"] .== 1))]), bins = 30, color = :red, label = "deceased")
+
+    return fig
+end 
+
+
+
 function draw_mean_lines(ax, XY, ls, col, label)
     XY_values = sort(combine(groupby(XY, ["insize"]), "cph_tst_c_ind_med"=>mean), ["insize"])
     lines!(ax, log10.(XY_values[:,1]), XY_values[:,2], linestyle=ls, color = col, label = label, linewidth = 3)
