@@ -158,9 +158,6 @@ function make_boxplots(PARAMS;test_metric = "cph_test_c_ind")
     medians = combine(groupby(DATA_df[:,["ID", "model_type", test_metric]], ["ID", "model_type"]), test_metric=>median) 
     text!(ax2, medians.ID[medians.model_type .== "cphdnn"].-0.35, medians[medians.model_type .== "cphdnn","$(test_metric)_median"] .+ offshift, text= string.(round.(medians[medians.model_type .== "cphdnn","$(test_metric)_median"], digits = 3)))
     text!(ax2, medians.ID[medians.model_type .== "coxridge"] .+ 0.04, medians[medians.model_type .== "coxridge","$(test_metric)_median"] .+ offshift, text= string.(round.(medians[medians.model_type .== "coxridge","$(test_metric)_median"], digits = 3)))
-    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.svg",fig)
-    CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.png",fig)
-    CairoMakie.save("figures/PDF/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.pdf",fig)
     return fig
 end
 

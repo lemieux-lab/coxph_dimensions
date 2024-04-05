@@ -89,14 +89,15 @@ function gather_params(basedir=".")
     return df
 end
 
-function gather_learning_curves(basedir=".")
+function gather_learning_curves(;basedir=".", skip_steps=1)
     df = DataFrame()
     frames = []
     for (root, dirs, files) in walkdir(basedir)
         for file in files
             if file == "learning_curves.bson"
-                # println("Loading $root/$file")
+                println("Loading $root/$file")
                 d = DataFrame(BSON.load("$root/$file"))
+                d = d[(d.steps .% skip_steps .== 0) .| (d.steps .== 1),:]
                 df = append!(df, d)
 
             end

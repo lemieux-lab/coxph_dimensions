@@ -52,9 +52,9 @@ LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0)
 nfolds =  5
 # DS_list = shuffle([BRCA_data, LGNAML_data, LGG_data, OV_data])
 ### EVAL BRCA CDS 
-ngenes = sum(BRCA_data["CDS"])
-evaluate_coxridge(BRCA_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
-evaluate_cphdnn(BRCA_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type="RDM");
+# ngenes = sum(BRCA_data["CDS"])
+# evaluate_coxridge(BRCA_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
+# evaluate_cphdnn(BRCA_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type="RDM");
 ### EVAL BRCA PCA 
 train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
 evaluate_coxridge_pca(BRCA_data, train_size, nepochs=350_000, cph_wd= 1e-6,cph_lr = 1e-6);
