@@ -56,9 +56,9 @@ nfolds =  5
 # evaluate_coxridge(BRCA_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
 # evaluate_cphdnn(BRCA_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type="RDM");
 ### EVAL BRCA PCA 
-train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
-evaluate_coxridge_pca(BRCA_data, train_size, nepochs=350_000, cph_wd= 1e-6,cph_lr = 1e-6);
-evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
+# train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
+# evaluate_coxridge_pca(BRCA_data, train_size, nepochs=350_000, cph_wd= 1e-6,cph_lr = 1e-6);
+# evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
 ### EVAL BRCA PAM50 
 # PAM50 = CSV.read("Data/GDC_processed/PAM50_genes_processed.csv", DataFrame)
 # BRCA_data["CDS"] =  [gene in PAM50[:,"alt_name"] for gene in BRCA_data["dataset"].genes];
@@ -67,27 +67,37 @@ evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr
 # evaluate_cphdnn(BRCA_data, sum(BRCA_data["CDS"]); dim_redux_type = "PAM50", nepochs =nepochs);
 
 ### EVAL BRCA CLIN F 
-# clinical_factors = Matrix(CSV.read("Data/GDC_processed/TCGA_BRCA_clinical_bin.csv", DataFrame))
-# BRCA_data["CF"] = clinical_factors
-# evaluate_coxridge(BRCA_data, 0; dim_redux_type = "CLINF", nepochs =nepochs, cph_lr = 1e-3);
-# evaluate_cphdnn(BRCA_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
+clinical_factors = Matrix(CSV.read("Data/GDC_processed/TCGA_BRCA_clinical_bin.csv", DataFrame))
+BRCA_data["CF"] = clinical_factors
+evaluate_coxridge(BRCA_data, 0; dim_redux_type = "CLINF", nepochs = 200_000, cph_wd = 1e-6, cph_lr = 1e-5);
+evaluate_cphdnn(BRCA_data, 0; dim_redux_type = "CLINF", nepochs = 200_000, cph_wd = 1e-3, cph_lr = 1e-6);
 
 
 # ### EVAL LGNAML CDS 
 ngenes = sum(LGNAML_data["CDS"])
 evaluate_coxridge(LGNAML_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
-evaluate_cphdnn(LGNAML_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type = "RDM");
+evaluate_cphdnn(LGNAML_data, ngenes, nepochs = 150_000, cph_wd =1e-4, cph_lr = 1e-6, dim_redux_type = "RDM");
 # ### EVAL LGNAML PCA 
 train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
 evaluate_coxridge_pca(LGNAML_data, train_size, nepochs=350_000, cph_wd= 1e-6, cph_lr = 1e-6);
 evaluate_cphdnn_pca(LGNAML_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
+
+# ### EVAL LGG 
+ngenes = sum(LGG_data["CDS"])
+evaluate_coxridge(LGG_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
+evaluate_cphdnn(LGG_data, ngenes, nepochs = 150_000, cph_wd =1e-4, cph_lr = 1e-6, dim_redux_type = "RDM");
+# ### EVAL LGG PCA 
+train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
+evaluate_coxridge_pca(LGNAML_data, train_size, nepochs=350_000, cph_wd= 1e-6, cph_lr = 1e-6);
+evaluate_cphdnn_pca(LGNAML_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
+
 ### EVAL LGNAML LSC17 
-# LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
-# LGNAML_data["CDS"] =  [gene in LSC17[:,"alt_name"] for gene in LGNAML_data["dataset"].genes];
-# ngenes = sum(LGNAML_data["CDS"])
-# LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
-# evaluate_coxridge(LGNAML_data, ngenes; dim_redux_type = "LSC17", nepochs =nepochs, cph_lr = 1e-3);
-# evaluate_cphdnn(LGNAML_data, ngenes; dim_redux_type = "LSC17", nepochs =nepochs);
+LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
+LGNAML_data["CDS"] =  [gene in LSC17[:,"alt_name"] for gene in LGNAML_data["dataset"].genes];
+ngenes = sum(LGNAML_data["CDS"])
+LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
+evaluate_coxridge(LGNAML_data, ngenes; dim_redux_type = "LSC17", nepochs =nepochs, cph_lr = 1e-3);
+evaluate_cphdnn(LGNAML_data, ngenes; dim_redux_type = "LSC17", nepochs =nepochs);
 ### EVAL LGNAML w\ LSC17 
 # LSC17 = CSV.read("Data/SIGNATURES/LSC17.csv", DataFrame);
 # LGNAML_data["CDS"] =  [~(gene in LSC17[:,"alt_name"]) & (keep_lgnaml_common[gene_id] == 1) for (gene_id, gene) in enumerate(LGNAML_data["dataset"].genes)];
@@ -104,13 +114,13 @@ evaluate_cphdnn_pca(LGNAML_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_
 # evaluate_coxridge_pca(LGNAML_data, train_size; dim_redux_type = "PCA-LSC17", nepochs =nepochs, cph_lr = 1e-4);
 
 ### EVAL LGNAML CLIN F
-# lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
-# CF_bin, lnames = numerise_labels(lgn_CF, ["Sex","Cytogenetic risk", "NPM1 mutation", "IDH1-R132 mutation", "FLT3-ITD mutation", ])
-# push!(lnames, "Age")
-# clinical_factors = hcat(CF_bin, lgn_CF[:,"Age_at_diagnosis"])
-# LGNAML_data["CF"] = clinical_factors
-# evaluate_coxridge(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs, cph_lr = 1e-3);
-# evaluate_cphdnn(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
+lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
+CF_bin, lnames = numerise_labels(lgn_CF, ["Sex","Cytogenetic risk", "NPM1 mutation", "IDH1-R132 mutation", "FLT3-ITD mutation", ])
+push!(lnames, "Age")
+clinical_factors = hcat(CF_bin, lgn_CF[:,"Age_at_diagnosis"])
+LGNAML_data["CF"] = clinical_factors
+evaluate_coxridge(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =80_000, cph_wd = 1e-6, cph_lr = 1e-4);
+evaluate_cphdnn(LGNAML_data, 0; dim_redux_type = "CLINF", nepochs =nepochs);
 
 ### EVAL LGNAML CYTO RISK
 # lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
