@@ -62,9 +62,9 @@ for (row_id, metric) in enumerate(["cind_vals", "loss_vals_log"])
     end    
 end
 fig 
-CairoMakie.save("figures/PDF/ismb_two_pager_1a.pdf", fig) 
-CairoMakie.save("figures/PDF/ismb_two_pager_1a.svg", fig) 
-CairoMakie.save("figures/ismb_two_pager_1a.png", fig) 
+CairoMakie.save("figures/PDF/ismb_two_pager_1a_brca.pdf", fig) 
+CairoMakie.save("figures/PDF/ismb_two_pager_1a_brca.svg", fig) 
+CairoMakie.save("figures/ismb_two_pager_1a_brca.png", fig) 
 CSV.write("figures/ismb_two_pager_1a_params.csv", PARAMS) 
 
 # Cox NL loss and concordance index do not always concord. (1A-LGN)
@@ -94,6 +94,12 @@ for (row_id, metric) in enumerate(["cind_vals", "loss_vals_log"])
             title = "Leucegene - CPHDNN - CLINF (8) - FOLD ($fold_id)");
         lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "train","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "train", metric], color = "blue", label = "train") 
         lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "test","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "test", metric], color = "orange", label = "test")
+        if metric == "loss_vals_log"
+            lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "train","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "train", "l2_vals"], color = :black, label = "l2 penalty") 
+        end
+        if row_id == 1 & fold_id == 5
+            axislegend(ax)
+        end  
     end    
 end
 fig 

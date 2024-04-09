@@ -20,8 +20,8 @@ function evaluate_model(modeltype, DS, dim_redux_size;hlsize = 0, nepochs= 5_000
         MODEL = gpu(build_model(modeltype, DS["params"], sigmoid_output = sigmoid_output))
         
         # train loop 
-        LOSS_TR, LOSS_TST, C_IND_TR, C_IND_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
-        push!(LOSSES_BY_FOLD, (LOSS_TR, LOSS_TST))
+        LOSS_TR, LOSS_TST, L2_LOSS, C_IND_TR, C_IND_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
+        push!(LOSSES_BY_FOLD, (LOSS_TR, LOSS_TST, L2_LOSS))
         push!(C_IND_BY_FOLD, (C_IND_TR, C_IND_TST))
         # final model eval 
         OUTS_tst = MODEL(DS["data_prep"]["test_x"])
@@ -125,9 +125,10 @@ function train_model!(MODEL, OPT, DS;foldn=0, print_step = 500)
     cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
     cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
     println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - 0 : TRAIN c-ind: $(round(cind_tr, digits = 3)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
-    LOSS_TR, LOSS_TST, C_IND_TR, C_IND_TST = [],[], [],[]
+    LOSS_TR, LOSS_TST, L2_LOSS, C_IND_TR, C_IND_TST = [],[], [], [],[]
     push!(LOSS_TR, lossfn_tr_dev(MODEL, DS, cph_l2, DS["params"]["nsamples_train"]))
     push!(LOSS_TST, lossfn_tst_dev(MODEL, DS, cph_l2, DS["params"]["nsamples_test"]))        
+    push!(L2_LOSS, l2_penalty(MODEL) * cph_l2 )
     cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
     push!(C_IND_TR, cind_tr)
     push!(C_IND_TST, cind_test)
@@ -144,6 +145,7 @@ function train_model!(MODEL, OPT, DS;foldn=0, print_step = 500)
         lossval_tst = round(lossfn_tst_dev(MODEL, DS, cph_l2, DS["params"]["nsamples_test"]), digits = 6)
         push!(LOSS_TR, lossfn_tr_dev(MODEL, DS, cph_l2, DS["params"]["nsamples_train"]))
         push!(LOSS_TST, lossfn_tst_dev(MODEL, DS, cph_l2, DS["params"]["nsamples_test"]))        
+        push!(L2_LOSS, l2_penalty(MODEL) * cph_l2 )
         cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
         cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
         push!(C_IND_TR, cind_tr)
@@ -152,7 +154,7 @@ function train_model!(MODEL, OPT, DS;foldn=0, print_step = 500)
             println("$(DS["params"]["dataset"]) $session_id - $(DS["params"]["model_type"]) - $(DS["params"]["dim_redux_type"]) $(DS["params"]["dim_redux"]) ($(size(DS["data_prep"]["train_x"])[1])) FOLD $foldn - $i : TRAIN c-ind: $(round(cind_tr, digits = 3)) ($lossval_tr)\tTEST c-ind: $(round(cind_test,digits =5)) ($lossval_tst)")
         end 
     end
-    return LOSS_TR, LOSS_TST, C_IND_TR, C_IND_TST
+    return LOSS_TR, LOSS_TST, L2_LOSS, C_IND_TR, C_IND_TST
 end
 
 
@@ -246,9 +248,10 @@ function dump_results!(DS, LOSSES_BY_FOLD, C_IND_BY_FOLD, OUTS_TST, Y_T_TST, Y_E
     foldns = vcat([(ones(nsteps * 2 ) * i) for i in 1:size(LOSSES_BY_FOLD)[1]]...)
     tst_train = vcat([vcat(["train" for i in 1:nsteps], ["test" for i in 1:nsteps]) for i in 1:size(LOSSES_BY_FOLD)[1]]...);
     loss_vals = Float64.(vcat([vcat(LOSSES[1], LOSSES[2]) for LOSSES in LOSSES_BY_FOLD]...));
+    l2_vals = Float64.(vcat([vcat(LOSSES[3], LOSSES[3]) for LOSSES in LOSSES_BY_FOLD]...));
     cind_vals = Float64.(vcat([vcat(CINDS[1], CINDS[2]) for CINDS in C_IND_BY_FOLD]...));
     CURVES_dict = Dict("modelid" => model_ids, "foldns" => foldns, 
-    "steps" => steps, "tst_train"=> tst_train, 
+    "steps" => steps, "tst_train"=> tst_train, "l2_vals" =>l2_vals, 
     "loss_vals"=>loss_vals, "cind_vals" => cind_vals)
 
     outfpath = "$(DS["params"]["model_title"])_$(DS["params"]["modelid"])"
