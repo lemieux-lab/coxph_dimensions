@@ -3,61 +3,147 @@ include("engines/data_processing.jl")
 include("engines/deep_learning.jl")
 include("engines/cross_validation.jl")
 include("engines/model_evaluation.jl")
+include("engines/figures.jl")
 outpath, session_id = set_dirs("RES_ISMB") ;
 
-function build_model(modeltype, params; sigmoid_output = true)
-    sigmoid_output ? params["output"] = sigmoid : params["output"] = identity 
-    if modeltype == "coxridge"
-        return Chain(Dense(params["insize"], 1, params["output"], bias = false))
-    elseif modeltype == "cphdnn"
-        return Chain(Dense(params["insize"],params["cph_hl_size"], leakyrelu), 
-        Dense(params["cph_hl_size"], params["cph_hl_size"], leakyrelu), 
-        Dense(params["cph_hl_size"], 1, params["output"],  bias = false))
-    end 
-end 
-function evaluate_model(modeltype, DS, dim_redux_size;hlsize = 0, nepochs= 5_000, cph_nb_hl = 0, cph_lr = 1e-4, 
-    cph_wd = 1e-4, nfolds =5,dim_redux_type ="RDM", print_step = 500)
-folds = prep_data_params_dict!(DS, dim_redux_size, hlsize = hlsize, nepochs= nepochs, 
-    cph_nb_hl = cph_nb_hl, cph_lr = cph_lr, cph_wd = cph_wd, nfolds = nfolds,  modeltype = modeltype,
-    dim_redux_type =dim_redux_type)
-OUTS_TST, Y_T_TST, Y_E_TST, train_cinds, test_cinds = [], [], [], [],[]
-LOSSES_BY_FOLD  = []
-# for fold in folds do train
-for fold in folds
-    # format data on GPU 
-    train_x, train_y_t, train_y_e, NE_frac_tr, test_x, test_y_t, test_y_e, NE_frac_tst = format_train_test(fold)
-    DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
-    "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
-    DS["params"]["insize"] = size(train_x)[1]
-    
-    ## init model and opt
-    OPT = Flux.ADAM(DS["params"]["cph_lr"]) 
-    MODEL = gpu(build_model(modeltype, DS["params"]))
-    
-    # train loop 
-    LOSS_TR, LOSS_TST = train_model!(MODEL, OPT, DS; print_step=print_step, foldn = fold["foldn"])
-    push!(LOSSES_BY_FOLD, (LOSS_TR, LOSS_TST))
-    # final model eval 
-    OUTS_tst = MODEL(DS["data_prep"]["test_x"])
-    OUTS_tr = MODEL(DS["data_prep"]["train_x"])
-    cind_test,cdnt_tst, ddnt_tst, tied_tst = concordance_index(DS["data_prep"]["test_y_t"], DS["data_prep"]["test_y_e"], -1 * OUTS_tst)
-    cind_tr, cdnt_tr, ddnt_tr, tied_tr  = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * OUTS_tr)
-    
-    push!(test_cinds, cind_test)
-    push!(train_cinds, cind_tr)
-    push!(OUTS_TST, vec(cpu(MODEL(DS["data_prep"]["test_x"]))))
-    push!(Y_T_TST, vec(cpu(DS["data_prep"]["test_y_t"])))
-    push!(Y_E_TST, vec(cpu(DS["data_prep"]["test_y_e"])))
-    DS["params"]["nparams"] = size(train_x)[1]
-end 
-c_indices_tst = dump_results!(DS, LOSSES_BY_FOLD, OUTS_TST, Y_T_TST, Y_E_TST, train_cinds, test_cinds)
-return c_indices_tst
-end 
-# Cox NL loss and concordance index do not always concord. (1A)
+tcga_datasets_list = ["Data/TCGA_datasets/$(x)" for x in readdir("Data/TCGA_OV_BRCA_LGG/") ]
+TCGA_datasets = load_tcga_datasets(tcga_datasets_list);
+BRCA_data = TCGA_datasets["BRCA"]
+LGG_data = TCGA_datasets["LGG"]
+OV_data = TCGA_datasets["OV"]
+
+LGNAML_data = Dict("name"=>"LgnAML","dataset" => MLSurvDataset("Data/LEUCEGENE/LGN_AML_tpm_n300_btypes_labels_surv.h5")) 
+keep_tcga_cds = [occursin("protein_coding", bt) for bt in BRCA_data["dataset"].biotypes]
+keep_lgnaml_common = [gene in BRCA_data["dataset"].genes[keep_tcga_cds] for gene in LGNAML_data["dataset"].genes];
+
+BRCA_data["CDS"] = keep_tcga_cds
+BRCA_data["CF"] = zeros(size(BRCA_data["dataset"].data)[1],0)  
+LGG_data["CDS"] = keep_tcga_cds  
+LGG_data["CF"] = zeros(size(LGG_data["dataset"].data)[1],0) 
+OV_data["CDS"] = keep_tcga_cds  
+OV_data["CF"] = zeros(size(OV_data["dataset"].data)[1],0) 
+
+LGNAML_data["CDS"] = keep_lgnaml_common 
+LGNAML_data["CF"] = zeros(size(LGNAML_data["dataset"].data)[1],0) 
+
+### Use LGG, BRCA, AML, OV 
+### Use random vs pca 
+### Use CPHDNN, Cox-ridge 
+### 10 replicates
+
+
+# Cox NL loss and concordance index do not always concord. (1A-BRCA)
+# BRCA clinf 16 CPHDNN / Cox-ridge training report learning curve (c-index, loss)
+# linear, adam, lr=1e-6, cph_wd=1e-3, 150K steps.
+clinical_factors = Matrix(CSV.read("Data/GDC_processed/TCGA_BRCA_clinical_bin.csv", DataFrame))
+BRCA_data["CF"] = clinical_factors
+
+evaluate_model("cphdnn", BRCA_data, 0, cph_nb_hl = 2, hlsize = 512, sigmoid_output=false,
+    nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CLINF")
+BRCA_data["params"]
+PARAMS = gather_params("RES_ISMB/")
+LC = gather_learning_curves(basedir="RES_ISMB/", skip_steps=100)
+PARAMS[:,"TYPE"] = replace.(["$x-$y" for (x,y) in  zip(PARAMS[:, "dim_redux_type"], PARAMS[:, "insize"])], "RDM"=>"CDS")
+
+LOSSES_DF = innerjoin(LC, sort(PARAMS, ["TYPE"]), on = "modelid");
+DATA_df = sort(LOSSES_DF[LOSSES_DF[:,"dataset"] .== "BRCA",:], ["TYPE"])
+names(DATA_df)
+DATA_df[:, "loss_vals_log"] .= log10.(DATA_df.loss_vals)
+fig = Figure(size = (1600,400));
+for (row_id, metric) in enumerate(["cind_vals", "loss_vals_log"])
+    #DATA_df = sort(LOSSES_DF[LOSSES_DF[:,"dataset"] .== dataset,:], ["TYPE"])
+    for fold_id in 1:5
+        FOLD_data = DATA_df[DATA_df.foldns .== fold_id,:]
+        ax = Axis(fig[row_id,fold_id]; 
+            xlabel = "steps", ylabel = metric, 
+            title = "BRCA - CPHDNN - CLINF (16) - FOLD ($fold_id)");
+        lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "train","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "train", metric], color = "blue", label = "train") 
+        lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "test","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "test", metric], color = "orange", label = "test")
+    end    
+end
+fig 
+CairoMakie.save("figures/PDF/ismb_two_pager_1a.pdf", fig) 
+CairoMakie.save("figures/PDF/ismb_two_pager_1a.svg", fig) 
+CairoMakie.save("figures/ismb_two_pager_1a.png", fig) 
+CSV.write("figures/ismb_two_pager_1a_params.csv", PARAMS) 
+
+# Cox NL loss and concordance index do not always concord. (1A-LGN)
 # LGN clinf 8 CPHDNN / Cox-ridge training report learning curve (c-index, loss)
-# sigmoid, adam, lr=1e-6, cph_wd=1e-3, 350K steps.
-# * BRCA clinf 
+# linear, adam, lr=1e-6, cph_wd=1e-3, 150K steps.
+lgn_CF = CSV.read("Data/LEUCEGENE/lgn_pronostic_CF", DataFrame)
+CF_bin, lnames = numerise_labels(lgn_CF, ["Sex","Cytogenetic risk", "NPM1 mutation", "IDH1-R132 mutation", "FLT3-ITD mutation", ])
+push!(lnames, "Age")
+clinical_factors = hcat(CF_bin, lgn_CF[:,"Age_at_diagnosis"])
+LGNAML_data["CF"] = clinical_factors
+evaluate_model("cphdnn", LGNAML_data, 0, cph_nb_hl = 2, hlsize = 512, sigmoid_output=false,
+    nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CLINF")
+PARAMS = gather_params("RES_ISMB/")
+LC = gather_learning_curves(basedir="RES_ISMB/", skip_steps=100)
+PARAMS[:,"TYPE"] = replace.(["$x-$y" for (x,y) in  zip(PARAMS[:, "dim_redux_type"], PARAMS[:, "insize"])], "RDM"=>"CDS")
+
+LOSSES_DF = innerjoin(LC, sort(PARAMS, ["TYPE"]), on = "modelid");
+DATA_df = sort(LOSSES_DF[LOSSES_DF[:,"dataset"] .== "LgnAML",:], ["TYPE"])
+DATA_df[:, "loss_vals_log"] .= log10.(DATA_df.loss_vals)
+fig = Figure(size = (1600,400));
+for (row_id, metric) in enumerate(["cind_vals", "loss_vals_log"])
+    #DATA_df = sort(LOSSES_DF[LOSSES_DF[:,"dataset"] .== dataset,:], ["TYPE"])
+    for fold_id in 1:5
+        FOLD_data = DATA_df[DATA_df.foldns .== fold_id,:]
+        ax = Axis(fig[row_id,fold_id]; 
+            xlabel = "steps", ylabel = metric, 
+            title = "Leucegene - CPHDNN - CLINF (8) - FOLD ($fold_id)");
+        lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "train","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "train", metric], color = "blue", label = "train") 
+        lines!(ax, FOLD_data[FOLD_data[:,"tst_train"] .== "test","steps"], FOLD_data[FOLD_data[:,"tst_train"] .== "test", metric], color = "orange", label = "test")
+    end    
+end
+fig 
+CairoMakie.save("figures/PDF/ismb_two_pager_1a_lgn.pdf", fig) 
+CairoMakie.save("figures/PDF/ismb_two_pager_1a_lgn.svg", fig) 
+CairoMakie.save("figures/ismb_two_pager_1a_lgn.png", fig) 
+CSV.write("figures/ismb_two_pager_1a_params.csv", PARAMS) 
+
 
 # Linear output (output range is unbound) vs sigmoid (output clamped between 0 and 1). (1B)
+ngenes = sum(BRCA_data["CDS"])
+evaluate_model("coxridge", BRCA_data, ngenes, cph_nb_hl = 0, hlsize = 0,  
+    nepochs = 80_000, cph_lr = 1e-6, cph_l2 = 1e-7, dim_redux_type = "CDS", sigmoid_output = false)
+
+prev_m, curr_m, lr_curves_df = evaluate_model_debug("cphdnn", BRCA_data, ngenes, cph_nb_hl = 2, hlsize = 512, 
+    nepochs = 50_000, cph_lr = 1e-6, cph_l2 = 1e-2, dim_redux_type = "CDS", sigmoid_output = false)
+lr_curves_df
+names(lr_curves_df)
+fig = Figure(size = (812,400));
+ax1 = Axis(fig[1,1], ylabel = "concordance index", xlabel = "steps")
+lines!(ax1, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"cind_tr"]), color = :blue, label = "train", linewidth = 3)
+lines!(ax1, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"cind_tst"]), color = :orange, label = "test", linewidth = 3)
+ax2 = Axis(fig[2,1], ylabel = "Cox NL Loss", xlabel = "steps")
+lines!(ax2, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"tr_loss"]), color = :blue, label = "train", linewidth = 3)
+lines!(ax2, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"tst_loss"]), color = :orange, label = "test", linewidth = 3)
+axislegend(ax2, position = :rt)
+fig = plot_hist_scores!(fig, BRCA_data, prev_m, log_tr = false)
+CairoMakie.save("figures/PDF/ismb_two_pager_1b_linear.pdf", fig)
+CairoMakie.save("figures/PDF/ismb_two_pager_1b_linear.svg", fig)
+CairoMakie.save("figures/ismb_two_pager_1b_linear.png", fig)
+
+prev_m, curr_m, lr_curves_df = evaluate_model_debug("cphdnn", BRCA_data, ngenes, cph_nb_hl = 2, hlsize = 512, 
+    nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CDS", sigmoid_output = true)
+fig = Figure(size = (812,400));
+ax1 = Axis(fig[1,1], ylabel = "concordance index", xlabel = "steps")
+lines!(ax1, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"cind_tr"]), color = :blue, label = "train", linewidth = 3)
+lines!(ax1, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"cind_tst"]), color = :orange, label = "test", linewidth = 3)
+ax2 = Axis(fig[2,1], ylabel = "Cox NL Loss", xlabel = "steps")
+lines!(ax2, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"tr_loss"]), color = :blue, label = "train", linewidth = 3)
+lines!(ax2, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"tst_loss"]), color = :orange, label = "test", linewidth = 3)
+axislegend(ax2, position = :rt)
+fig = plot_hist_scores!(fig, BRCA_data, prev_m, log_tr = true)
+CairoMakie.save("figures/PDF/ismb_two_pager_1b_sigmoid.pdf", fig)
+CairoMakie.save("figures/PDF/ismb_two_pager_1b_sigmoid.svg", fig)
+CairoMakie.save("figures/ismb_two_pager_1b_sigmoid.png", fig)
+    
+
+BRCA_data["params"]
+
+
+
 # Using convergence criterion for unbiased determination of L2, learning rate, optimization steps hyper-parameters. (1C)
 # Reporting cross-validation metrics with c-index scores aggregation + bootstrapping is more consistent than using the average. (1D) 
