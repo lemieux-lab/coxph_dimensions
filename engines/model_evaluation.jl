@@ -11,6 +11,12 @@ function evaluate_model(modeltype, DS, dim_redux_size;hlsize = 0, nepochs= 5_000
     for fold in folds
         # format data on GPU 
         train_x, train_y_t, train_y_e, NE_frac_tr, test_x, test_y_t, test_y_e, NE_frac_tst = format_train_test(fold)
+        if dim_redux_type == "PCA"
+            println("PCA applied...")
+            P = fit_pca(cpu(train_x), dim_redux_size);
+            train_x = gpu(Matrix(hcat(transform_pca(cpu(train_x), P)', DS["CF"][fold["train_ids"],:])'))
+            test_x = gpu(Matrix(hcat(transform_pca(cpu(test_x), P)', DS["CF"][fold["test_ids"],:])'))
+        end 
         DS["data_prep"] = Dict("train_x"=>train_x, "train_y_t"=>train_y_t,"train_y_e"=>train_y_e,"NE_frac_tr"=>NE_frac_tr, "test_x"=>test_x,
         "test_y_t"=> test_y_t, "test_y_e"=>test_y_e, "NE_frac_tst"=> NE_frac_tst)
         DS["params"]["insize"] = size(train_x)[1]

@@ -75,7 +75,7 @@ CF_bin, lnames = numerise_labels(lgn_CF, ["Sex","Cytogenetic risk", "NPM1 mutati
 push!(lnames, "Age")
 clinical_factors = hcat(CF_bin, lgn_CF[:,"Age_at_diagnosis"])
 LGNAML_data["CF"] = clinical_factors
-evaluate_model("cphdnn", LGNAML_data, 0, cph_nb_hl = 2, hlsize = 512, sigmoid_output=false,
+evaluate_model("cphdnn", LGNAML_data, 0, cph_nb_hl = 2, hlsize = 512, sigmoid_output=true,
     nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CLINF")
 PARAMS = gather_params("RES_ISMB/")
 LC = gather_learning_curves(basedir="RES_ISMB/", skip_steps=100)

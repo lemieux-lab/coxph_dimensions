@@ -57,8 +57,21 @@ nfolds =  5
 # evaluate_cphdnn(BRCA_data, ngenes, nepochs = 150_000, cph_wd =1e-3, cph_lr = 1e-6, dim_redux_type="RDM");
 ### EVAL BRCA PCA 
 # train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
-# evaluate_coxridge_pca(BRCA_data, train_size, nepochs=350_000, cph_wd= 1e-6,cph_lr = 1e-6);
-# evaluate_cphdnn_pca(BRCA_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
+
+train_size = size(BRCA_data["dataset"].data)[1] - Int(round(size(BRCA_data["dataset"].data)[1]    / nfolds))
+folds = prep_data_params_dict!(BRCA_data, train_size,dim_redux_type="PCA" )
+train_x, train_y_t, train_y_e, NE_frac_tr, test_x, test_y_t, test_y_e, NE_frac_tst = format_train_test(folds[1])
+size(train_x)       
+x_means = mean(cpu(train_x), dims = 2)
+Z = cpu(train_x) .- x_means
+U, S, V = svd(Z,full=true);
+size(U)
+
+evaluate_model("cphdnn", BRCA_data, train_size, cph_nb_hl = 2, hlsize = 512, sigmoid_output=true,
+    nepochs = 100_000, cph_lr = 1e-4, cph_l2 = 1e-3, dim_redux_type = "PCA")
+evaluate_model("coxridge", BRCA_data,train_size, cph_nb_hl = 0, hlsize = 0, sigmoid_output=true,
+    nepochs = 350_000, cph_lr = 1e-6, cph_l2 = 1e-6, dim_redux_type = "PCA")
+
 ### EVAL BRCA PAM50 
 # PAM50 = CSV.read("Data/GDC_processed/PAM50_genes_processed.csv", DataFrame)
 # BRCA_data["CDS"] =  [gene in PAM50[:,"alt_name"] for gene in BRCA_data["dataset"].genes];
@@ -69,18 +82,29 @@ nfolds =  5
 ### EVAL BRCA CLIN F 
 clinical_factors = Matrix(CSV.read("Data/GDC_processed/TCGA_BRCA_clinical_bin.csv", DataFrame))
 BRCA_data["CF"] = clinical_factors
-evaluate_coxridge(BRCA_data, 0; dim_redux_type = "CLINF", nepochs = 200_000, cph_wd = 1e-6, cph_lr = 1e-5);
-evaluate_cphdnn(BRCA_data, 0; dim_redux_type = "CLINF", nepochs = 200_000, cph_wd = 1e-3, cph_lr = 1e-6);
 
+evaluate_model("cphdnn", BRCA_data, 0, cph_nb_hl = 2, hlsize = 512, sigmoid_output=false,
+    nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CLINF")
+
+evaluate_model("coxridge", BRCA_data, 0, cph_nb_hl = 0, hlsize = 0, sigmoid_output=false,
+    nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CLINF")
 
 # ### EVAL LGNAML CDS 
 ngenes = sum(LGNAML_data["CDS"])
-evaluate_coxridge(LGNAML_data, ngenes, nepochs = 80_000,cph_wd = 1e-7, cph_lr = 1e-6, dim_redux_type="RDM");
-evaluate_cphdnn(LGNAML_data, ngenes, nepochs = 150_000, cph_wd =1e-4, cph_lr = 1e-6, dim_redux_type = "RDM");
+
+evaluate_model("cphdnn", LGNAML_data, ngenes, cph_nb_hl = 2, hlsize = 512, sigmoid_output=true,
+    nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-4, dim_redux_type = "CDS")
+evaluate_model("coxridge", LGNAML_data, ngenes, cph_nb_hl = 0, hlsize = 0, sigmoid_output=true,
+    nepochs = 80_000, cph_lr = 1e-6, cph_l2 = 1e-7, dim_redux_type = "CDS")
+
 # ### EVAL LGNAML PCA 
+
 train_size = size(LGNAML_data["dataset"].data)[1] - Int(round(size(LGNAML_data["dataset"].data)[1]    / nfolds))
-evaluate_coxridge_pca(LGNAML_data, train_size, nepochs=350_000, cph_wd= 1e-6, cph_lr = 1e-6);
-evaluate_cphdnn_pca(LGNAML_data, train_size, nepochs=100_000, cph_wd= 1e-3, cph_lr = 1e-4);
+
+evaluate_model("cphdnn", LGNAML_data, train_size, cph_nb_hl = 2, hlsize = 512, sigmoid_output=true,
+    nepochs = 100_000, cph_lr = 1e-4, cph_l2 = 1e-3, dim_redux_type = "PCA")
+evaluate_model("coxridge", LGNAML_data, train_size, cph_nb_hl = 0, hlsize = 0, sigmoid_output=true,
+    nepochs = 350_000, cph_lr = 1e-6, cph_l2 = 1e-6, dim_redux_type = "PCA")
 
 # ### EVAL LGG 
 ngenes = sum(LGG_data["CDS"])
