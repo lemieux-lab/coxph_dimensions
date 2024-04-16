@@ -4,6 +4,7 @@ include("engines/deep_learning.jl")
 include("engines/cross_validation.jl")
 include("engines/model_evaluation.jl")
 include("engines/figures.jl")
+include("engines/utils.jl")
 outpath, session_id = set_dirs("RES_ISMB") ;
 
 tcga_datasets_list = ["Data/TCGA_datasets/$(x)" for x in readdir("Data/TCGA_OV_BRCA_LGG/") ]
@@ -126,7 +127,21 @@ ax2 = Axis(fig[2,1], ylabel = "Cox NL Loss", xlabel = "steps")
 lines!(ax2, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"tr_loss"]), color = :blue, label = "train", linewidth = 3)
 lines!(ax2, collect(1:size(lr_curves_df)[1]), Float32.(lr_curves_df[:,"tst_loss"]), color = :orange, label = "test", linewidth = 3)
 axislegend(ax2, position = :rt)
+
+  
+
 fig = plot_hist_scores!(fig, BRCA_data, prev_m, log_tr = false)
+tr_outs = cpu(vec(prev_m(BRCA_data["data_prep"]["train_x"])))
+hist_df = sort(DataFrame(:outs=>tr_outs, :deceased=>vec(cpu(BRCA_data["data_prep"]["train_y_e"])) ), "outs")
+hist_df[:,"II"] .= 1
+
+hist_deceased = [size(CC)[1] for CC in partition(tr_outs[vec(cpu(BRCA_data["data_prep"]["train_y_e"])) .== 1], intervals(tr_outs, 30))]
+hist_alive = [size(CC)[1] for CC in partition(tr_outs[vec(cpu(BRCA_data["data_prep"]["train_y_e"])) .== 0], intervals(tr_outs, 30))]
+x_ticks = intervals(tr_outs, 30)[1:end-1]
+
+fig = Figure(size = (1024,512));
+ax = Axis(fig[1,1]);
+fig
 CairoMakie.save("figures/PDF/ismb_two_pager_1b_linear.pdf", fig)
 CairoMakie.save("figures/PDF/ismb_two_pager_1b_linear.svg", fig)
 CairoMakie.save("figures/ismb_two_pager_1b_linear.png", fig)

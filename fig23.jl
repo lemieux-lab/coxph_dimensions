@@ -9,9 +9,12 @@ PARAMS = gather_params("RES_FIG23/")
 PARAMS[:,"TYPE"] = replace.(["$x-$y" for (x,y) in  zip(PARAMS[:, "dim_redux_type"], PARAMS[:, "insize"])], "RDM"=>"CDS")
 names(PARAMS)
 PARAMS[PARAMS[:,"dataset"] .== "LgnAML",["TYPE"]]
+PARAMS = PARAMS[PARAMS.TYPE .!= "CLINF-8",:]
+to_csv = PARAMS[:,["dataset", "dim_redux_type", "model_type", "cph_test_c_ind"]]
+CSV.write("python_scripts/table1.csv", to_csv)
 PARAMS[:,"II"] .= 1
-medians = combine(groupby(PARAMS[:,["II", "dataset", "TYPE", "model_type", "cph_tst_c_ind_med"]], ["dataset", "TYPE", "model_type"]), "cph_tst_c_ind_med"=>mean, "II"=>sum) 
-sort(medians, ["dataset", "TYPE"])
+medians = combine(groupby(PARAMS[:,["II", "dataset", "TYPE", "model_type", "cph_test_c_ind"]], ["dataset", "TYPE", "model_type"]), "cph_test_c_ind"=>mean, "II"=>sum) 
+sort(medians, ["dataset", "TYPE", "model_type"])
     
 fig = make_boxplots(PARAMS[PARAMS.TYPE .!= "CLINF-8", :], test_metric = "cph_tst_c_ind_med")
 CairoMakie.save("figures/figure2_lgnaml_brca_coxridge_cphdnn_rdm_pca_clinf_sign.svg",fig)

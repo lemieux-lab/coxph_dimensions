@@ -1,3 +1,20 @@
+function intervals(tr_outs, nbins) 
+    [minimum(tr_outs) + i* (maximum(tr_outs)-minimum(tr_outs)) / nbins for i in 1:nbins]
+end 
+function partition(data, intervals)                                                                                
+    ranges = intervals[1:end-1] .=> intervals[2:end]                                                               
+    bins = [similar(data, 0) for _ in 1:length(ranges)]                                                                          
+    for x in data                                                                                                  
+        for (i, (a, b)) in pairs(ranges)                                                                           
+            if a <= x < b                                                                                          
+                push!(bins[i], x)                                                                                  
+                break                                                                                              
+            end                                                                                                    
+        end                                                                                                        
+    end                                                                                                            
+    return bins                                                                                                    
+end  
+
 function plot_hist_scores(DS, MODEL; log_tr = true)
     tr_outs = MODEL(DS["data_prep"]["train_x"])
     tst_outs = MODEL(DS["data_prep"]["test_x"])
@@ -6,19 +23,27 @@ function plot_hist_scores(DS, MODEL; log_tr = true)
     fig = Figure(size = (1024,512));
     ax = Axis(fig[1,1], 
     # xticks = ([1], ["training set"]),
-    title="distribution of risk scores predicted by CPHDNN in BRCA \n training set (c index = $(round(c_ind_tr, digits = 3)))")
+    title="training set (c index = $(round(c_ind_tr, digits = 3)))")
     log_tr ? tr_scores = log10.(vec(cpu(tr_outs))) : tr_scores = vec(cpu(tr_outs)) 
     log_tr ? tst_scores = log10.(vec(cpu(tst_outs))) : tst_scores = vec(cpu(tst_outs)) 
     
-    hist!(ax, tr_scores[vec(cpu(DS["data_prep"]["train_y_e"] .== 1))], bins = 30, color = :red, label = "deceased")
-    hist!(ax, tr_scores[vec(cpu(DS["data_prep"]["train_y_e"] .== 0))], bins = 30, color = :blue, label = "alive")
+    tr_hist_deceased = [size(CC)[1] for CC in partition(tr_scores[vec(cpu(BRCA_data["data_prep"]["train_y_e"])) .== 1], intervals(tr_scores, 30))]
+    tr_hist_alive = [size(CC)[1] for CC in partition(tr_scores[vec(cpu(BRCA_data["data_prep"]["train_y_e"])) .== 0], intervals(tr_scores, 30))]
+    x_ticks = intervals(tr_scores, 30)[1:end-1]
+
+    barplot!(ax, x_ticks, tr_hist_deceased .+ tr_hist_alive, color = :blue, strokewidth = 0.5, gap = 0., label = "alive");
+    barplot!(ax, x_ticks, tr_hist_deceased, color = :red, gap = 0.,strokewidth = 0.5, label = "deceased");
 
     axislegend(ax, position = :lc)
     ax = Axis(fig[1,2], 
     # xticks = ([1], ["training set"]),
-    title="distribution of risk scores predicted by CPHDNN in BRCA \n test set (c index = $(round(c_ind_tst, digits = 3)))")
-    hist!(ax, tst_scores[vec(cpu(DS["data_prep"]["test_y_e"] .== 0))], bins = 30, color = :blue, label = "alive")
-    hist!(ax, tst_scores[vec(cpu(DS["data_prep"]["test_y_e"] .== 1))], bins = 30, color = :red, label = "deceased")
+    title="test set (c index = $(round(c_ind_tst, digits = 3)))")
+    tst_hist_deceased = [size(CC)[1] for CC in partition(tst_scores[vec(cpu(BRCA_data["data_prep"]["train_y_e"])) .== 1], intervals(tst_scores, 30))]
+    tst_hist_alive = [size(CC)[1] for CC in partition(tst_scores[vec(cpu(BRCA_data["data_prep"]["train_y_e"])) .== 0], intervals(tst_scores, 30))]
+    x_ticks = intervals(tst_scores, 30)[1:end-1]
+
+    barplot!(ax, x_ticks, tst_hist_deceased .+ tst_hist_alive, color = :blue, strokewidth = 0.5, gap = 0., label = "alive");
+    barplot!(ax, x_ticks, tst_hist_deceased, color = :red, gap = 0.,strokewidth = 0.5, label = "deceased");
 
     return fig
 end 
@@ -28,21 +53,29 @@ function plot_hist_scores!(fig, DS, MODEL; log_tr = true)
     tst_outs = MODEL(DS["data_prep"]["test_x"])
     c_ind_tr, bli, bla, blou = concordance_index(DS["data_prep"]["train_y_t"],DS["data_prep"]["train_y_e"], -1 * tr_outs)
     c_ind_tst, bli, bla, blou = concordance_index(DS["data_prep"]["test_y_t"],DS["data_prep"]["test_y_e"], -1 * tst_outs)
-    ax = Axis(fig[1:2,2], 
+    ax = Axis(fig[1:2,2],  ylabel = "count", xlabel = "output scores",
     # xticks = ([1], ["training set"]),
-    title="distribution of risk scores predicted by CPHDNN in BRCA \n training set (c index = $(round(c_ind_tr, digits = 3)))")
+    title="training set (c index = $(round(c_ind_tr, digits = 3)))")
     log_tr ? tr_scores = log10.(vec(cpu(tr_outs))) : tr_scores = vec(cpu(tr_outs)) 
     log_tr ? tst_scores = log10.(vec(cpu(tst_outs))) : tst_scores = vec(cpu(tst_outs)) 
     
-    hist!(ax, tr_scores[vec(cpu(DS["data_prep"]["train_y_e"] .== 1))], bins = 30, color = :red, label = "deceased")
-    hist!(ax, tr_scores[vec(cpu(DS["data_prep"]["train_y_e"] .== 0))], bins = 30, color = :blue, label = "alive")
+    tr_hist_deceased = [size(CC)[1] for CC in partition(tr_scores[vec(cpu(DS["data_prep"]["train_y_e"])) .== 1], intervals(tr_scores, 30))]
+    tr_hist_alive = [size(CC)[1] for CC in partition(tr_scores[vec(cpu(DS["data_prep"]["train_y_e"])) .== 0], intervals(tr_scores, 30))]
+    x_ticks = intervals(tr_scores, 30)[1:end-1]
+
+    barplot!(ax, x_ticks, tr_hist_deceased .+ tr_hist_alive, color = :blue, strokewidth = 0.5, gap = 0., label = "alive");
+    barplot!(ax, x_ticks, tr_hist_deceased, color = :red, gap = 0.,strokewidth = 0.5, label = "deceased");
 
     axislegend(ax, position = :rc)
-    ax = Axis(fig[1:2,3], 
+    ax = Axis(fig[1:2,3], ylabel = "count", xlabel = "output scores",
     # xticks = ([1], ["training set"]),
-    title="\n test set (c index = $(round(c_ind_tst, digits = 3)))")
-    hist!(ax, tst_scores[vec(cpu(DS["data_prep"]["test_y_e"] .== 0))], bins = 30, color = :blue, label = "alive")
-    hist!(ax, tst_scores[vec(cpu(DS["data_prep"]["test_y_e"] .== 1))], bins = 30, color = :red, label = "deceased")
+    title="test set (c index = $(round(c_ind_tst, digits = 3)))")
+    tst_hist_deceased = [size(CC)[1] for CC in partition(tst_scores[vec(cpu(DS["data_prep"]["test_y_e"])) .== 1], intervals(tst_scores, 30))]
+    tst_hist_alive = [size(CC)[1] for CC in partition(tst_scores[vec(cpu(DS["data_prep"]["test_y_e"])) .== 0], intervals(tst_scores, 30))]
+    x_ticks = intervals(tst_scores, 30)[1:end-1]
+
+    barplot!(ax, x_ticks, tst_hist_deceased .+ tst_hist_alive, color = :blue, strokewidth = 0.5, gap = 0., label = "alive");
+    barplot!(ax, x_ticks, tst_hist_deceased, color = :red, gap = 0.,strokewidth = 0.5, label = "deceased");
 
     return fig
 end 

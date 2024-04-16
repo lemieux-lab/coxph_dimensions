@@ -22,6 +22,7 @@ using MultivariateStats
 using XLSX
 using UMAP 
 using LinearAlgebra
+using CategoricalArrays
 
 # using JuBox 
 function set_dirs(basedir="./RES")
