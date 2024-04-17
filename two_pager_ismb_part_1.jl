@@ -146,6 +146,7 @@ CairoMakie.save("figures/PDF/ismb_two_pager_1b_linear.pdf", fig)
 CairoMakie.save("figures/PDF/ismb_two_pager_1b_linear.svg", fig)
 CairoMakie.save("figures/ismb_two_pager_1b_linear.png", fig)
 
+ngenes = sum(BRCA_data["CDS"])
 prev_m, curr_m, lr_curves_df = evaluate_model_debug("cphdnn", BRCA_data, ngenes, cph_nb_hl = 2, hlsize = 512, 
     nepochs = 150_000, cph_lr = 1e-6, cph_l2 = 1e-3, dim_redux_type = "CDS", sigmoid_output = true)
 fig = Figure(size = (812,400));
